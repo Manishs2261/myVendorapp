@@ -5,7 +5,7 @@ import 'api_exception.dart';
 import 'logging_interceptor.dart';
 
 class DioClient {
-  static const baseUrl = 'http://10.0.2.2:5000/api'; // Android emulator localhost
+  static const baseUrl = 'https://myshopbackend-ecrq.onrender.com';
 
   static Dio create(SecureStorageService storage) {
     final dio = Dio(
