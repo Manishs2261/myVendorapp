@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../storage/secure_storage.dart';
 import 'auth_interceptor.dart';
 import 'api_exception.dart';
+import 'logging_interceptor.dart';
 
 class DioClient {
   static const baseUrl = 'http://10.0.2.2:5000/api'; // Android emulator localhost
@@ -21,6 +22,7 @@ class DioClient {
 
     dio.interceptors.addAll([
       AuthInterceptor(storage, dio),
+      LoggingInterceptor(),
       _errorInterceptor(),
     ]);
 
