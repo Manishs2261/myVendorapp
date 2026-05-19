@@ -5,6 +5,9 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/onboarding/presentation/providers/onboarding_provider.dart';
+import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../../features/onboarding/presentation/screens/splash_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_list_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
@@ -19,22 +22,56 @@ part 'app_router.g.dart';
 @riverpod
 GoRouter appRouter(Ref ref) {
   final authState = ref.watch(authNotifierProvider);
+  final onboardingState = ref.watch(onboardingNotifierProvider);
 
   return GoRouter(
-    initialLocation: RouteNames.dashboard,
+    initialLocation: RouteNames.splash,
     debugLogDiagnostics: false,
     redirect: (context, state) {
-      final loggedIn = authState.valueOrNull != null;
-      final loading = authState.isLoading;
-      final goingToAuth = state.matchedLocation == RouteNames.login ||
-          state.matchedLocation == RouteNames.register;
+      final loc = state.matchedLocation;
 
-      if (loading) return null;
-      if (!loggedIn && !goingToAuth) return RouteNames.login;
-      if (loggedIn && goingToAuth) return RouteNames.dashboard;
+      final authLoading = authState.isLoading;
+      final onboardingLoading = onboardingState.isLoading;
+
+      // Stay on splash while either state is loading
+      if (authLoading || onboardingLoading) {
+        return loc == RouteNames.splash ? null : RouteNames.splash;
+      }
+
+      final loggedIn = authState.valueOrNull != null;
+      final seenOnboarding = onboardingState.valueOrNull ?? false;
+
+      final goingToSplash = loc == RouteNames.splash;
+      final goingToOnboarding = loc == RouteNames.onboarding;
+      final goingToAuth =
+          loc == RouteNames.login || loc == RouteNames.register;
+
+      // First-time user: must see onboarding
+      if (!seenOnboarding && !goingToOnboarding && !goingToSplash) {
+        return RouteNames.onboarding;
+      }
+
+      // Already authenticated: skip auth/onboarding screens
+      if (loggedIn && (goingToAuth || goingToOnboarding || goingToSplash)) {
+        return RouteNames.dashboard;
+      }
+
+      // Onboarding seen but not logged in: go to login
+      if (seenOnboarding && !loggedIn && !goingToAuth) {
+        return RouteNames.login;
+      }
+
       return null;
     },
     routes: [
+      GoRoute(
+        path: RouteNames.splash,
+        builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.onboarding,
+        builder: (_, _) => const OnboardingScreen(),
+      ),
       GoRoute(
         path: RouteNames.login,
         builder: (_, _) => const LoginScreen(),
