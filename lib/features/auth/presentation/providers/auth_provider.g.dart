@@ -45,7 +45,7 @@ String _$authNotifierHash() => r'f496eac7bc5bf2c436363907f37b6fd95bbd3a08';
 /// See also [AuthNotifier].
 @ProviderFor(AuthNotifier)
 final authNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<AuthNotifier, VendorUser?>.internal(
+    AsyncNotifierProvider<AuthNotifier, VendorUser?>.internal(
       AuthNotifier.new,
       name: r'authNotifierProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -55,6 +55,6 @@ final authNotifierProvider =
       allTransitiveDependencies: null,
     );
 
-typedef _$AuthNotifier = AutoDisposeAsyncNotifier<VendorUser?>;
+typedef _$AuthNotifier = AsyncNotifier<VendorUser?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -21,6 +21,7 @@ class RegisterRequest {
   });
 
   Map<String, dynamic> toJson() => {
+        'name': businessName,
         'business_name': businessName,
         'email': email,
         'password': password,
@@ -50,12 +51,17 @@ class VendorUser {
   factory VendorUser.fromJson(Map<String, dynamic> json) {
     return VendorUser(
       id: json['id'] as int,
-      businessName: json['business_name'] as String? ?? json['businessName'] as String,
-      email: json['email'] as String,
+      businessName: json['business_name'] as String? ??
+          json['businessName'] as String? ??
+          json['name'] as String? ??
+          '',
+      email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
-      verified: json['verified'] as bool? ?? false,
-      logoUrl: json['logo_url'] as String?,
+      verified: json['is_email_verified'] as bool? ??
+          json['verified'] as bool? ??
+          false,
+      logoUrl: json['avatar_url'] as String? ?? json['logo_url'] as String?,
     );
   }
 

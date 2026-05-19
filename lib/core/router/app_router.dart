@@ -19,15 +19,16 @@ import 'route_names.dart';
 
 part 'app_router.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
-  final authState = ref.watch(authNotifierProvider);
-  final onboardingState = ref.watch(onboardingNotifierProvider);
+  late final GoRouter router;
 
-  return GoRouter(
+  router = GoRouter(
     initialLocation: RouteNames.splash,
     debugLogDiagnostics: false,
     redirect: (context, state) {
+      final authState = ref.read(authNotifierProvider);
+      final onboardingState = ref.read(onboardingNotifierProvider);
       final loc = state.matchedLocation;
 
       final authLoading = authState.isLoading;
@@ -117,4 +118,9 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
+
+  ref.listen(authNotifierProvider, (_, _) => router.refresh());
+  ref.listen(onboardingNotifierProvider, (_, _) => router.refresh());
+
+  return router;
 }

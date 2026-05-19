@@ -62,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Lumina Vendor',
+                      'My Vendor',
                       style: theme.textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),

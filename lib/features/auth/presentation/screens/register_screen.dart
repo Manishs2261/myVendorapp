@@ -19,6 +19,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  bool _obscurePass = true;
 
   @override
   void dispose() {
@@ -92,7 +93,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   AuthFormField(
                     controller: _passCtrl,
                     label: 'Password',
-                    obscureText: true,
+                    obscureText: _obscurePass,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePass ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePass = !_obscurePass),
+                    ),
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Required';
                       if (v.length < 6) return 'Minimum 6 characters';

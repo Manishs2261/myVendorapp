@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../auth/domain/auth_models.dart';
 import '../../auth/domain/i_auth_repository.dart';
 import '../../../core/network/api_exception.dart';
@@ -10,26 +11,44 @@ class AuthRepository implements IAuthRepository {
 
   AuthRepository(this._remote, this._storage);
 
+  Never _unwrapDio(DioException e) {
+    final inner = e.error;
+    if (inner is ApiException) throw inner;
+    final msg = e.response?.data?['detail'] as String? ??
+        e.response?.data?['message'] as String? ??
+        e.message ??
+        'Request failed';
+    throw ServerException(msg, statusCode: e.response?.statusCode);
+  }
+
   @override
   Future<void> login(LoginRequest request) async {
-    final data = await _remote.login(request.email, request.password);
-    final role = data['role'] as String? ?? '';
-    if (role.toUpperCase() != 'VENDOR') {
-      throw const ApiException('Access denied. Vendor account required.');
+    try {
+      final data = await _remote.login(request.email, request.password);
+      final role = data['role'] as String? ?? '';
+      if (role.toUpperCase() != 'VENDOR') {
+        throw const ApiException('Access denied. Vendor account required.');
+      }
+      await _storage.saveTokens(
+        accessToken: data['access_token'] as String,
+        refreshToken: data['refresh_token'] as String,
+      );
+    } on DioException catch (e) {
+      _unwrapDio(e);
     }
-    await _storage.saveTokens(
-      accessToken: data['access_token'] as String,
-      refreshToken: data['refresh_token'] as String,
-    );
   }
 
   @override
   Future<void> register(RegisterRequest request) async {
-    final data = await _remote.register(request.toJson());
-    await _storage.saveTokens(
-      accessToken: data['access_token'] as String,
-      refreshToken: data['refresh_token'] as String,
-    );
+    try {
+      final data = await _remote.register(request.toJson());
+      await _storage.saveTokens(
+        accessToken: data['access_token'] as String,
+        refreshToken: data['refresh_token'] as String,
+      );
+    } on DioException catch (e) {
+      _unwrapDio(e);
+    }
   }
 
   @override

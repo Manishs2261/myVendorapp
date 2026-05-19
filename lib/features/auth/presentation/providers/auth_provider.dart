@@ -18,7 +18,7 @@ IAuthRepository authRepository(Ref ref) => AuthRepository(
       ref.read(secureStorageProvider),
     );
 
-@riverpod
+@Riverpod(keepAlive: true)
 class AuthNotifier extends _$AuthNotifier {
   @override
   Future<VendorUser?> build() async {
