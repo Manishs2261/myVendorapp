@@ -6,6 +6,7 @@ abstract final class RouteNames {
   static const dashboard = '/dashboard';
   static const products = '/products';
   static const productDetail = '/products/:id';
+  static const addProduct = '/add-product';
   static const orders = '/orders';
   static const orderDetail = '/orders/:id';
   static const shop = '/shop';
