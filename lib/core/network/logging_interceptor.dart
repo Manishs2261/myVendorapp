@@ -1,8 +1,42 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import '../utils/app_logger.dart';
 
 class LoggingInterceptor extends Interceptor {
+
+  static String generateCurlCommand(RequestOptions options) {
+    String curl = 'curl -X ${options.method}';
+
+    // Add headers
+    options.headers.forEach((key, value) {
+      curl += ' -H "$key: $value"';
+    });
+
+    // Handle FormData separately
+    if (options.data is FormData) {
+      final formData = options.data as FormData;
+
+      for (final field in formData.fields) {
+        curl += ' -F "${field.key}=${field.value}"';
+      }
+      for (final MapEntry<String, MultipartFile> entry in formData.files) {
+        final fieldName = entry.key;
+        final multipartFile = entry.value;
+        final filename = multipartFile.filename ?? 'file';
+        curl += ' -F "$fieldName=@<path_to_$filename>;filename=$filename"';
+      }
+    } else if (options.data != null) {
+      curl += ' -d \'${options.data}\'';
+    }
+
+    // Add URL
+    curl += ' "${options.uri}"';
+
+    return curl;
+  }
+
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final curl = _buildCurl(options);
@@ -20,10 +54,10 @@ $headers
 BODY:
 $body
 
-cURL:
-$curl
 
 =============================================''');
+
+    debugPrint('CURL-  ${generateCurlCommand(options)}',wrapWidth: 1000);
 
     handler.next(options);
   }

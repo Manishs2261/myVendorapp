@@ -1,30 +1,19 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/router/route_names.dart';
-import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
-import '../../../../shared/widgets/stat_card.dart';
-import '../../../profile/presentation/providers/profile_provider.dart';
-import '../../../shop/domain/shop_review_models.dart';
-import '../../../shop/presentation/providers/shop_provider.dart';
-import '../../domain/dashboard_models.dart';
-import '../providers/dashboard_provider.dart';
+import '../../domain/shop_analytics_models.dart';
+import '../providers/shop_analytics_provider.dart';
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overviewAsync = ref.watch(dashboardOverviewProvider);
-    final profileAsync = ref.watch(profileNotifierProvider);
-    final shopAsync = ref.watch(shopNotifierProvider);
-    final reviewsAsync = ref.watch(shopReviewStatsProvider);
-
-    final vendorName = profileAsync.valueOrNull?.businessName ?? 'Vendor';
-    final firstName = vendorName.split(' ').first;
-    final shopStatus = shopAsync.valueOrNull?.status;
+    final analyticsAsync = ref.watch(shopAnalyticsProvider);
+    final period = ref.watch(shopAnalyticsPeriodProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,58 +21,57 @@ class DashboardScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
-            onPressed: () {
-              ref.invalidate(dashboardOverviewProvider);
-              ref.invalidate(profileNotifierProvider);
-              ref.invalidate(shopNotifierProvider);
-              ref.invalidate(shopReviewStatsProvider);
-            },
+            onPressed: () => ref.invalidate(shopAnalyticsProvider),
           ),
         ],
       ),
-      body: overviewAsync.when(
+      body: analyticsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => ref.invalidate(dashboardOverviewProvider),
+          onRetry: () => ref.invalidate(shopAnalyticsProvider),
         ),
-        data: (overview) => RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(dashboardOverviewProvider);
-            ref.invalidate(profileNotifierProvider);
-            ref.invalidate(shopNotifierProvider);
-            ref.invalidate(shopReviewStatsProvider);
-          },
+        data: (analytics) => RefreshIndicator(
+          onRefresh: () async => ref.invalidate(shopAnalyticsProvider),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
-              _GreetingHeader(firstName: firstName),
-              const SizedBox(height: 16),
-              if (shopStatus != null && shopStatus != 'approved')
-                _ApprovalBanner(status: shopStatus),
-              _CompletionCard(
-                overview: overview,
-                profile: profileAsync.valueOrNull,
-                shop: shopAsync.valueOrNull,
-                onTap: () => context.go(RouteNames.shop),
-              ),
-              const SizedBox(height: 20),
-              _StatsGrid(overview: overview),
-              const SizedBox(height: 20),
-              if (overview.recentProducts.isNotEmpty) ...[
-                _ProductViewsChart(products: overview.recentProducts),
+              // Sponsored banner
+              if (analytics.sponsored != null) ...[
+                _SponsoredBanner(info: analytics.sponsored!),
                 const SizedBox(height: 16),
               ],
-              _QuickActions(),
-              const SizedBox(height: 20),
-              if (overview.recentProducts.isNotEmpty)
-                _RecentProductsList(
-                  products: overview.recentProducts,
-                  onProductTap: (id) => context.push('/products/$id'),
-                  onViewAll: () => context.go(RouteNames.products),
-                ),
-              const SizedBox(height: 20),
-              _ReviewsWidget(reviewsAsync: reviewsAsync),
+
+              // Analytics header + period picker
+              _AnalyticsHeader(
+                metrics: analytics.metrics,
+                period: period,
+                onPeriodChanged: (p) =>
+                    ref.read(shopAnalyticsPeriodProvider.notifier).state = p,
+              ),
+              const SizedBox(height: 12),
+
+              // 7 metric cards
+              _MetricsGrid(metrics: analytics.metrics),
+              const SizedBox(height: 16),
+
+              // Daily Traffic
+              _DailyTrafficCard(points: analytics.dailyTraffic),
+              const SizedBox(height: 16),
+
+              // Product Performance
+              _ProductPerformanceCard(products: analytics.productPerformance),
+              const SizedBox(height: 16),
+
+              // Bottom row: Customer Actions + Search Keywords
+              _CustomerActionsCard(actions: analytics.customerActions),
+              const SizedBox(height: 16),
+
+              _SearchKeywordsCard(keywords: analytics.searchKeywords),
+              const SizedBox(height: 16),
+
+              // Smart Insights
+              _SmartInsightsCard(insights: analytics.insights),
             ],
           ),
         ),
@@ -92,96 +80,609 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// ─── Greeting ─────────────────────────────────────────────────────────────────
+// ─── Sponsored Banner ─────────────────────────────────────────────────────────
 
-class _GreetingHeader extends StatelessWidget {
-  final String firstName;
-  const _GreetingHeader({required this.firstName});
+class _SponsoredBanner extends StatelessWidget {
+  final SponsoredInfo info;
+  const _SponsoredBanner({required this.info});
 
-  String get _timeGreeting {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Sponsored — Active',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: Colors.green[700],
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'View details →',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.green[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _SponsorStat(label: 'Views', value: '${info.views}'),
+              _SponsorStat(label: 'Clicks', value: '${info.clicks}'),
+              _SponsorStat(label: 'CTR', value: '${info.ctr}%'),
+              _SponsorStat(label: 'Days Left', value: '${info.daysLeft}'),
+            ],
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _SponsorStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _SponsorStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
+      children: [
+        Text(value,
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+// ─── Analytics Header ─────────────────────────────────────────────────────────
+
+class _AnalyticsHeader extends StatelessWidget {
+  final ShopMetrics metrics;
+  final String period;
+  final void Function(String) onPeriodChanged;
+
+  const _AnalyticsHeader({
+    required this.metrics,
+    required this.period,
+    required this.onPeriodChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const periods = [
+      ('today', 'Today'),
+      ('7d', '7 Days'),
+      ('30d', '30 Days'),
+    ];
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '$_timeGreeting, $firstName',
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
+        Text('Analytics Dashboard',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         Text(
-          "Here's what's happening with your shop today.",
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          '${metrics.dateStart} → ${metrics.dateEnd}',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: periods.map((p) {
+            final selected = period == p.$1;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onPeriodChanged(p.$1),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    p.$2,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: selected
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight:
+                          selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 }
 
-// ─── Approval Banner ──────────────────────────────────────────────────────────
+// ─── Metrics Grid ─────────────────────────────────────────────────────────────
 
-class _ApprovalBanner extends StatelessWidget {
-  final String status;
-  const _ApprovalBanner({required this.status});
+class _MetricsGrid extends StatelessWidget {
+  final ShopMetrics metrics;
+  const _MetricsGrid({required this.metrics});
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _MetricData(
+        icon: Icons.visibility_outlined,
+        label: 'Product Views',
+        value: '${metrics.productViews}',
+        iconColor: Colors.indigo,
+      ),
+      _MetricData(
+        icon: Icons.bar_chart_rounded,
+        label: 'Impressions',
+        value: '${metrics.impressions}',
+        iconColor: Colors.teal,
+      ),
+      _MetricData(
+        icon: Icons.ads_click_rounded,
+        label: 'CTR',
+        value: '${metrics.ctr}%',
+        iconColor: Colors.orange,
+      ),
+      _MetricData(
+        icon: Icons.phone_outlined,
+        label: 'Call Clicks',
+        value: '${metrics.callClicks}',
+        iconColor: Colors.green,
+      ),
+      _MetricData(
+        icon: Icons.chat_outlined,
+        label: 'WhatsApp',
+        value: '${metrics.whatsappClicks}',
+        iconColor: Colors.green[700]!,
+      ),
+      _MetricData(
+        icon: Icons.directions_outlined,
+        label: 'Directions',
+        value: '${metrics.directions}',
+        iconColor: Colors.blue,
+      ),
+      _MetricData(
+        icon: Icons.inbox_outlined,
+        label: 'Inquiries',
+        value: '${metrics.inquiries}',
+        iconColor: Colors.purple,
+      ),
+    ];
+
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: cards.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) => _MetricCard(data: cards[i]),
+      ),
+    );
+  }
+}
+
+class _MetricData {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconColor;
+  const _MetricData({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.iconColor,
+  });
+}
+
+class _MetricCard extends StatelessWidget {
+  final _MetricData data;
+  const _MetricCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = status == 'rejected'
-        ? theme.colorScheme.error
-        : status == 'suspended'
-            ? Colors.orange
-            : theme.colorScheme.tertiary;
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      width: 110,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(data.icon, color: data.iconColor, size: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(data.value,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text(data.label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                  )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Daily Traffic Card ───────────────────────────────────────────────────────
+
+class _DailyTrafficCard extends StatelessWidget {
+  final List<DailyTrafficPoint> points;
+  const _DailyTrafficCard({required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Daily Traffic',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text('Views, customer actions, and searches per day',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            if (points.isEmpty)
+              SizedBox(
+                height: 120,
+                child: Center(
+                  child: Text('No traffic data yet',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ),
+              )
+            else
+              SizedBox(
+                height: 140,
+                child: CustomPaint(
+                  painter: _LineChartPainter(
+                    points: points,
+                    viewsColor: theme.colorScheme.primary,
+                    actionsColor: Colors.green,
+                    searchesColor: Colors.orange,
+                  ),
+                  size: Size.infinite,
+                ),
+              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _Legend(color: theme.colorScheme.primary, label: 'Views'),
+                const SizedBox(width: 16),
+                const _Legend(color: Colors.green, label: 'Actions'),
+                const SizedBox(width: 16),
+                const _Legend(color: Colors.orange, label: 'Searches'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _Legend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )),
+      ],
+    );
+  }
+}
+
+class _LineChartPainter extends CustomPainter {
+  final List<DailyTrafficPoint> points;
+  final Color viewsColor;
+  final Color actionsColor;
+  final Color searchesColor;
+
+  const _LineChartPainter({
+    required this.points,
+    required this.viewsColor,
+    required this.actionsColor,
+    required this.searchesColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+    final maxVal = points
+        .expand((p) => [p.views, p.actions, p.searches])
+        .fold(1, math.max)
+        .toDouble();
+
+    final step = size.width / (points.length - 1).clamp(1, double.infinity);
+
+    void drawLine(List<int> values, Color color) {
+      final paint = Paint()
+        ..color = color
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      final path = Path();
+      for (var i = 0; i < values.length; i++) {
+        final x = i * step;
+        final y = size.height - (values[i] / maxVal * size.height);
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          final prevX = (i - 1) * step;
+          final prevY = size.height - (values[i - 1] / maxVal * size.height);
+          final cpX = (prevX + x) / 2;
+          path.cubicTo(cpX, prevY, cpX, y, x, y);
+        }
+      }
+      canvas.drawPath(path, paint);
+
+      final dotPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+      for (var i = 0; i < values.length; i++) {
+        final x = i * step;
+        final y = size.height - (values[i] / maxVal * size.height);
+        canvas.drawCircle(Offset(x, y), 3, dotPaint);
+      }
+    }
+
+    drawLine(points.map((p) => p.views).toList(), viewsColor);
+    drawLine(points.map((p) => p.actions).toList(), actionsColor);
+    drawLine(points.map((p) => p.searches).toList(), searchesColor);
+  }
+
+  @override
+  bool shouldRepaint(_LineChartPainter old) => old.points != points;
+}
+
+// ─── Product Performance ──────────────────────────────────────────────────────
+
+class _ProductPerformanceCard extends StatefulWidget {
+  final List<ProductPerformanceItem> products;
+  const _ProductPerformanceCard({required this.products});
+
+  @override
+  State<_ProductPerformanceCard> createState() =>
+      _ProductPerformanceCardState();
+}
+
+class _ProductPerformanceCardState extends State<_ProductPerformanceCard> {
+  int _page = 0;
+  static const _pageSize = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total = widget.products.length;
+    final start = _page * _pageSize;
+    final end = (start + _pageSize).clamp(0, total);
+    final pageItems = widget.products.sublist(start, end);
+    final totalPages = (total / _pageSize).ceil();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Product Performance',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text('Views, CTR, and customer actions per product',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 12),
+
+            // Header row
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  const Expanded(flex: 4, child: SizedBox()),
+                  _ColHeader('VIEWS'),
+                  _ColHeader('CTR'),
+                  _ColHeader('📞'),
+                  _ColHeader('💬'),
+                  _ColHeader('↗'),
+                  _ColHeader('LAST SEEN'),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            if (widget.products.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text('No products yet',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ),
+              )
+            else
+              ...pageItems.map((p) => _ProductRow(product: p)),
+
+            if (totalPages > 1) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed:
+                        _page > 0 ? () => setState(() => _page--) : null,
+                    child: const Text('← Prev'),
+                  ),
+                  Text('Page ${_page + 1}',
+                      style: theme.textTheme.bodySmall),
+                  TextButton(
+                    onPressed: _page < totalPages - 1
+                        ? () => setState(() => _page++)
+                        : null,
+                    child: const Text('Next →'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColHeader extends StatelessWidget {
+  final String text;
+  const _ColHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 9,
+            ),
+      ),
+    );
+  }
+}
+
+class _ProductRow extends StatelessWidget {
+  final ProductPerformanceItem product;
+  const _ProductRow({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: color, size: 20),
-          const SizedBox(width: 10),
+          // Product image + name
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            flex: 4,
+            child: Row(
               children: [
-                Text(
-                  'Vendor Approval Pending',
-                  style: theme.textTheme.labelLarge?.copyWith(color: color),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: product.image != null
+                      ? Image.network(
+                          product.image!,
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              _ProductThumb(),
+                        )
+                      : _ProductThumb(),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'You can continue managing your shop. Approval-based actions may be limited until your account is approved.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    product.name,
+                    style: theme.textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
+          _DataCell('${product.views}'),
+          // CTR badge
+          Expanded(
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${product.ctr}%',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: Colors.red[700], fontSize: 9),
+                ),
+              ),
             ),
+          ),
+          _DataCell('${product.callClicks}'),
+          _DataCell('${product.whatsappClicks}'),
+          _DataCell('${product.directions}'),
+          Expanded(
             child: Text(
-              status,
-              style: theme.textTheme.labelSmall?.copyWith(color: color),
+              product.lastSeen ?? '—',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
             ),
           ),
         ],
@@ -190,43 +691,205 @@ class _ApprovalBanner extends StatelessWidget {
   }
 }
 
-// ─── Completion Card ──────────────────────────────────────────────────────────
-
-class _CompletionCard extends StatelessWidget {
-  final DashboardOverview overview;
-  final dynamic profile;
-  final dynamic shop;
-  final VoidCallback onTap;
-
-  const _CompletionCard({
-    required this.overview,
-    required this.profile,
-    required this.shop,
-    required this.onTap,
-  });
-
-  List<({String label, bool done})> _buildSteps() {
-    return [
-      (label: 'Business name added', done: profile?.businessName?.isNotEmpty == true),
-      (label: 'Business email added', done: profile?.email?.isNotEmpty == true),
-      (label: 'Business phone added', done: profile?.phone?.isNotEmpty == true),
-      (label: 'GST or PAN added', done: profile?.gstNumber != null),
-      (label: 'Shop name added', done: shop?.shopName?.isNotEmpty == true),
-      (label: 'Shop logo added', done: shop?.logoUrl != null),
-      (label: 'Shop address added', done: shop?.address != null),
-      (label: 'Email verified', done: profile?.isEmailVerified == true),
-      (label: 'Phone verified', done: profile?.isPhoneVerified == true),
-      (label: '5+ products added', done: overview.totalProducts >= 5),
-    ];
+class _ProductThumb extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(Icons.inventory_2_outlined,
+          size: 14,
+          color: Theme.of(context).colorScheme.onSurfaceVariant),
+    );
   }
+}
+
+class _DataCell extends StatelessWidget {
+  final String text;
+  const _DataCell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+// ─── Customer Actions ─────────────────────────────────────────────────────────
+
+class _CustomerActionsCard extends StatelessWidget {
+  final CustomerActions actions;
+  const _CustomerActionsCard({required this.actions});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final steps = _buildSteps();
-    final doneCount = steps.where((s) => s.done).length;
-    final score = (doneCount / steps.length * 100).round();
-    final isComplete = score == 100;
+    final total = actions.total;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Customer Actions',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text('How customers interact with your shop',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            if (total == 0)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text('No customer actions yet',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ),
+              )
+            else
+              Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: CustomPaint(
+                      painter: _PieChartPainter(
+                        values: [
+                          actions.callClicks.toDouble(),
+                          actions.directions.toDouble(),
+                          actions.productClicks.toDouble(),
+                        ],
+                        colors: [Colors.indigo, Colors.cyan, Colors.green],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _PieLegendRow(
+                          color: Colors.indigo,
+                          label: 'Call Clicks',
+                          value: actions.callClicks,
+                          total: total,
+                        ),
+                        const SizedBox(height: 8),
+                        _PieLegendRow(
+                          color: Colors.cyan,
+                          label: 'Directions',
+                          value: actions.directions,
+                          total: total,
+                        ),
+                        const SizedBox(height: 8),
+                        _PieLegendRow(
+                          color: Colors.green,
+                          label: 'Product Clicks',
+                          value: actions.productClicks,
+                          total: total,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PieLegendRow extends StatelessWidget {
+  final Color color;
+  final String label;
+  final int value;
+  final int total;
+  const _PieLegendRow({
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total > 0 ? (value / total * 100).toStringAsFixed(1) : '0.0';
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Text(label, style: theme.textTheme.bodySmall)),
+        Text(
+          '$value  $pct%',
+          style: theme.textTheme.labelSmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _PieChartPainter extends CustomPainter {
+  final List<double> values;
+  final List<Color> colors;
+
+  const _PieChartPainter({required this.values, required this.colors});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold(0.0, (a, b) => a + b);
+    if (total == 0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 4;
+    var startAngle = -math.pi / 2;
+
+    for (var i = 0; i < values.length; i++) {
+      if (values[i] == 0) continue;
+      final sweep = values[i] / total * 2 * math.pi;
+      final paint = Paint()
+        ..color = colors[i % colors.length]
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweep,
+        true,
+        paint,
+      );
+      startAngle += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PieChartPainter old) => old.values != values;
+}
+
+// ─── Search Keywords ──────────────────────────────────────────────────────────
+
+class _SearchKeywordsCard extends StatelessWidget {
+  final SearchKeywords keywords;
+  const _SearchKeywordsCard({required this.keywords});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
     return Card(
       child: Padding(
@@ -236,501 +899,150 @@ class _CompletionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _RingProgress(score: score),
-                const SizedBox(width: 16),
+                Text('Search Keywords',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text(
+                  '${keywords.totalSearches} total searches this period',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top keywords
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isComplete ? 'Shop Profile Complete' : 'Shop Profile Incomplete',
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                      Row(
+                        children: [
+                          Icon(Icons.search,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text('Top Keywords',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600)),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Complete your profile to rank higher in search results',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (!isComplete)
-                        FilledButton.tonal(
-                          onPressed: onTap,
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 32),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                          ),
-                          child: const Text('Complete Profile'),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: steps.map((s) => _StepChip(label: s.label, done: s.done)).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RingProgress extends StatelessWidget {
-  final int score;
-  const _RingProgress({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      width: 72,
-      height: 72,
-      child: CustomPaint(
-        painter: _RingPainter(score: score, color: color),
-        child: Center(
-          child: Text(
-            '$score%',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RingPainter extends CustomPainter {
-  final int score;
-  final Color color;
-  const _RingPainter({required this.score, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final radius = math.min(cx, cy) - 6;
-    final strokeWidth = 6.0;
-
-    final bgPaint = Paint()
-      ..color = color.withValues(alpha: 0.15)
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final fgPaint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(Offset(cx, cy), radius, bgPaint);
-
-    final sweepAngle = 2 * math.pi * score / 100;
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      fgPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter old) => old.score != score;
-}
-
-class _StepChip extends StatelessWidget {
-  final String label;
-  final bool done;
-  const _StepChip({required this.label, required this.done});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = done ? Colors.green : theme.colorScheme.onSurfaceVariant;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-          size: 13,
-          color: color,
-        ),
-        const SizedBox(width: 4),
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color)),
-      ],
-    );
-  }
-}
-
-// ─── Stats Grid ───────────────────────────────────────────────────────────────
-
-class _StatsGrid extends StatelessWidget {
-  final DashboardOverview overview;
-  const _StatsGrid({required this.overview});
-
-  @override
-  Widget build(BuildContext context) {
-    final activePercent = overview.totalProducts > 0
-        ? '${(overview.activeProducts / overview.totalProducts * 100).round()}% of total'
-        : '0% of total';
-
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.15,
-      children: [
-        StatCard(
-          label: 'Total Products',
-          value: overview.totalProducts.toString(),
-          icon: Icons.inventory_2_outlined,
-          trend: '${overview.recentProducts.length} recent items',
-        ),
-        StatCard(
-          label: 'Active Products',
-          value: overview.activeProducts.toString(),
-          icon: Icons.check_circle_outline,
-          iconColor: Colors.green,
-          trend: activePercent,
-        ),
-        StatCard(
-          label: 'Need Attention',
-          value: overview.inactiveProducts.toString(),
-          icon: Icons.warning_amber_outlined,
-          iconColor: Colors.orange,
-          trend: 'Inactive / pending',
-        ),
-        StatCard(
-          label: 'Total Views',
-          value: AppFormatters.compact(overview.totalViews),
-          icon: Icons.visibility_outlined,
-          iconColor: Colors.cyan,
-          trend: '${overview.pendingOrders} pending orders',
-        ),
-        StatCard(
-          label: 'Revenue',
-          value: AppFormatters.currency(overview.totalRevenue),
-          icon: Icons.currency_rupee,
-          iconColor: Colors.purple,
-          trend: '${overview.totalOrders} total orders',
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Product Views Chart ──────────────────────────────────────────────────────
-
-class _ProductViewsChart extends StatelessWidget {
-  final List<RecentProduct> products;
-  const _ProductViewsChart({required this.products});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final maxClicks = products.map((p) => p.clickCount).fold(0, math.max);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Recent Product Views', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(
-              'Latest products and their current click counts',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 120,
-              child: CustomPaint(
-                painter: _SparklinePainter(
-                  products: products,
-                  maxClicks: maxClicks,
-                  color: theme.colorScheme.primary,
-                ),
-                size: Size.infinite,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: products
-                  .map(
-                    (p) => Expanded(
-                      child: Text(
-                        p.name.length > 6 ? '${p.name.substring(0, 6)}..' : p.name,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 9,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final List<RecentProduct> products;
-  final int maxClicks;
-  final Color color;
-
-  const _SparklinePainter({
-    required this.products,
-    required this.maxClicks,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (products.isEmpty) return;
-
-    final effectiveMax = maxClicks == 0 ? 1 : maxClicks;
-    final step = size.width / (products.length - 1).clamp(1, double.infinity);
-
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final fillPaint = Paint()
-      ..color = color.withValues(alpha: 0.15)
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    final fillPath = Path();
-
-    for (var i = 0; i < products.length; i++) {
-      final x = i * step;
-      final y = size.height - (products[i].clickCount / effectiveMax * size.height);
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, size.height);
-        fillPath.lineTo(x, y);
-      } else {
-        final prevX = (i - 1) * step;
-        final prevY = size.height - (products[i - 1].clickCount / effectiveMax * size.height);
-        final cpX = (prevX + x) / 2;
-        path.cubicTo(cpX, prevY, cpX, y, x, y);
-        fillPath.cubicTo(cpX, prevY, cpX, y, x, y);
-      }
-    }
-
-    final lastX = (products.length - 1) * step;
-    fillPath.lineTo(lastX, size.height);
-    fillPath.close();
-
-    canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(path, linePaint);
-
-    // draw dots
-    final dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    for (var i = 0; i < products.length; i++) {
-      final x = i * step;
-      final y = size.height - (products[i].clickCount / effectiveMax * size.height);
-      canvas.drawCircle(Offset(x, y), 3, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SparklinePainter old) =>
-      old.products != products || old.maxClicks != maxClicks;
-}
-
-// ─── Quick Actions ────────────────────────────────────────────────────────────
-
-class _QuickActions extends ConsumerWidget {
-  const _QuickActions();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final actions = [
-      (icon: Icons.add_box_outlined, label: 'Add New Product', route: RouteNames.products),
-      (icon: Icons.store_outlined, label: 'Edit Shop Profile', route: RouteNames.shop),
-      (icon: Icons.shopping_bag_outlined, label: 'View Orders', route: RouteNames.orders),
-      (icon: Icons.person_outline, label: 'My Profile', route: RouteNames.profile),
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick Actions', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            ...actions.map(
-              (a) => InkWell(
-                onTap: () => context.go(a.route),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  child: Row(
-                    children: [
-                      Icon(a.icon, size: 20, color: theme.colorScheme.primary),
-                      const SizedBox(width: 12),
-                      Text(a.label, style: theme.textTheme.bodyMedium),
-                      const Spacer(),
-                      Icon(Icons.chevron_right, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Recent Products List ─────────────────────────────────────────────────────
-
-class _RecentProductsList extends StatelessWidget {
-  final List<RecentProduct> products;
-  final void Function(int id) onProductTap;
-  final VoidCallback onViewAll;
-
-  const _RecentProductsList({
-    required this.products,
-    required this.onProductTap,
-    required this.onViewAll,
-  });
-
-  Color _statusColor(String status, BuildContext context) {
-    switch (status) {
-      case 'active':
-        return Colors.green;
-      case 'inactive':
-        return Colors.orange;
-      case 'rejected':
-        return Theme.of(context).colorScheme.error;
-      default:
-        return Theme.of(context).colorScheme.onSurfaceVariant;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Recent Products', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                const Spacer(),
-                TextButton(onPressed: onViewAll, child: const Text('View All')),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...products.take(5).map(
-              (p) => InkWell(
-                onTap: () => onProductTap(p.id),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: p.imageUrls.isNotEmpty
-                            ? Image.network(
-                                p.imageUrls.first,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => _ProductPlaceholder(),
-                              )
-                            : _ProductPlaceholder(),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.name,
-                              style: theme.textTheme.bodyMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 8),
+                      if (keywords.topKeywords.isEmpty)
+                        Text('No searches yet',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant))
+                      else
+                        ...keywords.topKeywords.map((kw) {
+                          final maxCount = keywords.topKeywords.first.count;
+                          final pct = maxCount > 0 ? kw.count / maxCount : 0.0;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                        child: Text(kw.query,
+                                            style:
+                                                theme.textTheme.bodySmall)),
+                                    Text('${kw.count}',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                                color: theme.colorScheme
+                                                    .onSurfaceVariant)),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 6,
+                                    backgroundColor: theme
+                                        .colorScheme.surfaceContainerHighest,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            if (p.categoryName != null)
-                              Text(
-                                p.categoryName!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // No result searches
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              size: 14, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text('No-Result Searches (High Demand)',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (keywords.noResultSearches.isEmpty)
+                        Text('None yet',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant))
+                      else
+                        ...keywords.noResultSearches.map((s) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.orange.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: Colors.orange
+                                          .withValues(alpha: 0.25)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                        child: Text(s.query,
+                                            style:
+                                                theme.textTheme.bodySmall)),
+                                    Text('${s.count}x · 0 results',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                                color: Colors.orange[700],
+                                                fontSize: 9)),
+                                  ],
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            AppFormatters.currency(p.price),
-                            style: theme.textTheme.labelMedium,
-                          ),
-                          const SizedBox(height: 2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _statusColor(p.status, context).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              p.status,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: _statusColor(p.status, context),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        children: [
-                          Icon(Icons.visibility_outlined, size: 12, color: theme.colorScheme.onSurfaceVariant),
-                          Text(
-                            '${p.clickCount}',
+                            )),
+
+                      if (keywords.noResultSearches.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '💡 These are products customers want but can\'t find. Consider adding them!',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 10),
                           ),
-                        ],
-                      ),
+                        ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -739,23 +1051,11 @@ class _RecentProductsList extends StatelessWidget {
   }
 }
 
-class _ProductPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Icon(Icons.inventory_2_outlined, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
-    );
-  }
-}
+// ─── Smart Insights ───────────────────────────────────────────────────────────
 
-// ─── Reviews Widget ───────────────────────────────────────────────────────────
-
-class _ReviewsWidget extends StatelessWidget {
-  final AsyncValue<ShopReviewStats> reviewsAsync;
-  const _ReviewsWidget({required this.reviewsAsync});
+class _SmartInsightsCard extends StatelessWidget {
+  final List<ShopInsight> insights;
+  const _SmartInsightsCard({required this.insights});
 
   @override
   Widget build(BuildContext context) {
@@ -766,122 +1066,60 @@ class _ReviewsWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Shop Reviews', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(
-              'Customer ratings for your shop',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            reviewsAsync.when(
-              loading: () => const Center(child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )),
-              error: (_, _) => Text(
-                'Could not load reviews',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            Text('Smart Insights',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text('Auto-generated based on your shop\'s performance trends',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            if (insights.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.lightbulb_outline,
+                          size: 32, color: Colors.amber),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No insights yet. Insights are generated nightly after your shop accumulates activity.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ...insights.map(
+                (insight) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lightbulb_outline,
+                          size: 16, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (insight.title.isNotEmpty)
+                                Text(insight.title,
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600)),
+                              Text(insight.message,
+                                  style: theme.textTheme.bodySmall),
+                            ],
+                          )),
+                    ],
+                  ),
+                ),
               ),
-              data: (stats) => stats.totalReviews == 0
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: Text(
-                          'No shop reviews yet',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                    )
-                  : _ReviewsContent(stats: stats),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReviewsContent extends StatelessWidget {
-  final ShopReviewStats stats;
-  const _ReviewsContent({required this.stats});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Text(
-              stats.averageRating.toStringAsFixed(1),
-              style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            _StarRow(rating: stats.averageRating.round(), size: 14),
-            const SizedBox(height: 4),
-            Text(
-              '${stats.totalReviews} reviews',
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-        const SizedBox(width: 20),
-        if (stats.recentReviews.isNotEmpty)
-          Expanded(
-            child: Column(
-              children: stats.recentReviews
-                  .take(3)
-                  .map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _StarRow(rating: r.rating, size: 10),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              r.comment ?? 'No comment',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontStyle: r.comment == null ? FontStyle.italic : FontStyle.normal,
-                                color: r.comment == null ? theme.colorScheme.onSurfaceVariant : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            r.reviewerName,
-                            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _StarRow extends StatelessWidget {
-  final int rating;
-  final double size;
-  const _StarRow({required this.rating, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(
-        5,
-        (i) => Icon(
-          i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-          size: size,
-          color: i < rating ? Colors.amber : Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
     );
