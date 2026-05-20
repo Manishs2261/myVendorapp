@@ -3,6 +3,7 @@ import '../../auth/domain/auth_models.dart';
 import '../../auth/domain/i_auth_repository.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../../../core/utils/json_parser.dart';
 import 'auth_remote_source.dart';
 
 class AuthRepository implements IAuthRepository {
@@ -54,7 +55,7 @@ class AuthRepository implements IAuthRepository {
   @override
   Future<VendorUser?> getMe() async {
     final data = await _remote.getMe();
-    return VendorUser.fromJson(data);
+    return parseJson('VendorUser', data, VendorUser.fromJson);
   }
 
   @override

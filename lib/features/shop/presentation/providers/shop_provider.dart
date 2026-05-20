@@ -5,6 +5,7 @@ import '../../data/shop_remote_source.dart';
 import '../../data/shop_repository.dart';
 import '../../domain/i_shop_repository.dart';
 import '../../domain/shop_models.dart';
+import '../../domain/shop_review_models.dart';
 
 part 'shop_provider.g.dart';
 
@@ -28,4 +29,10 @@ class ShopNotifier extends _$ShopNotifier {
       () => ref.read(shopRepositoryProvider).updateShop(data),
     );
   }
+}
+
+@riverpod
+Future<ShopReviewStats> shopReviewStats(Ref ref) async {
+  final data = await ref.read(shopRemoteSourceProvider).getReviewStats();
+  return ShopReviewStats.fromJson(data);
 }

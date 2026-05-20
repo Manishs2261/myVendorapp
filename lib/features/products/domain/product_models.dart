@@ -26,7 +26,7 @@ class Product {
       id: json['id'] as int,
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
-      price: (json['price'] as num).toDouble(),
+      price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
       stock: json['stock'] as int? ?? 0,
       status: ProductStatus.values.firstWhere(
         (s) => s.name == (json['status'] as String? ?? 'active'),

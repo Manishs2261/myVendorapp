@@ -4,6 +4,9 @@ class VendorProfile {
   final String email;
   final String phone;
   final String? logoUrl;
+  final String? gstNumber;
+  final bool isEmailVerified;
+  final bool isPhoneVerified;
 
   const VendorProfile({
     required this.id,
@@ -11,15 +14,21 @@ class VendorProfile {
     required this.email,
     required this.phone,
     this.logoUrl,
+    this.gstNumber,
+    this.isEmailVerified = false,
+    this.isPhoneVerified = false,
   });
 
   factory VendorProfile.fromJson(Map<String, dynamic> json) {
     return VendorProfile(
       id: json['id'] as int,
       businessName: json['business_name'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String? ?? '',
+      email: json['business_email'] as String? ?? json['email'] as String? ?? '',
+      phone: json['business_phone'] as String? ?? json['phone'] as String? ?? '',
       logoUrl: json['logo_url'] as String?,
+      gstNumber: json['gst_number'] as String?,
+      isEmailVerified: json['is_email_verified'] as bool? ?? false,
+      isPhoneVerified: json['is_phone_verified'] as bool? ?? false,
     );
   }
 }

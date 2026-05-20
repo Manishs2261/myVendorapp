@@ -1,3 +1,4 @@
+import '../../../core/utils/json_parser.dart';
 import '../domain/i_profile_repository.dart';
 import '../domain/profile_models.dart';
 import 'profile_remote_source.dart';
@@ -9,12 +10,12 @@ class ProfileRepository implements IProfileRepository {
   @override
   Future<VendorProfile> getProfile() async {
     final data = await _remote.getProfile();
-    return VendorProfile.fromJson(data);
+    return parseJson('VendorProfile', data, VendorProfile.fromJson);
   }
 
   @override
   Future<VendorProfile> updateProfile(Map<String, dynamic> data) async {
     final updated = await _remote.updateProfile(data);
-    return VendorProfile.fromJson(updated);
+    return parseJson('VendorProfile', updated, VendorProfile.fromJson);
   }
 }

@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'package:dio/dio.dart';
+import '../utils/app_logger.dart';
 
 class LoggingInterceptor extends Interceptor {
   @override
@@ -9,8 +9,8 @@ class LoggingInterceptor extends Interceptor {
     final headers = _formatMap(options.headers);
     final body = options.data != null ? _prettyJson(options.data) : 'none';
 
-    log('''
-REQUEST =====================================
+    AppLogger.debug('''
+[API] REQUEST =====================================
 
 ${options.method} ${options.uri}
 
@@ -23,8 +23,7 @@ $body
 cURL:
 $curl
 
-=============================================
-''', name: 'API');
+=============================================''');
 
     handler.next(options);
   }
@@ -34,11 +33,10 @@ $curl
     final headers = _formatMap(
       response.headers.map.map((k, v) => MapEntry(k, v.join(', '))),
     );
-
     final body = _prettyJson(response.data);
 
-    log('''
-RESPONSE ====================================
+    AppLogger.info('''
+[API] RESPONSE ====================================
 
 ${response.statusCode} ${response.requestOptions.method}
 ${response.requestOptions.uri}
@@ -49,8 +47,7 @@ $headers
 BODY:
 $body
 
-=============================================
-''', name: 'API');
+=============================================''');
 
     handler.next(response);
   }
@@ -59,8 +56,8 @@ $body
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final body = _prettyJson(err.response?.data);
 
-    log('''
-ERROR =======================================
+    AppLogger.error('''
+[API] ERROR =======================================
 
 ${err.response?.statusCode ?? 'N/A'}
 ${err.requestOptions.method}
@@ -72,41 +69,29 @@ ${err.message}
 BODY:
 $body
 
-=============================================
-''', name: 'API');
+=============================================''');
 
     handler.next(err);
   }
 
   String _buildCurl(RequestOptions options) {
     final sb = StringBuffer('curl -X ${options.method}');
-
-    options.headers.forEach((k, v) {
-      sb.write(" \\\n-H '$k: $v'");
-    });
-
+    options.headers.forEach((k, v) => sb.write(" \\\n-H '$k: $v'"));
     if (options.data != null) {
-      final encoded = jsonEncode(options.data);
-      sb.write(" \\\n-d '$encoded'");
+      sb.write(" \\\n-d '${jsonEncode(options.data)}'");
     }
-
     sb.write(" \\\n'${options.uri}'");
-
     return sb.toString();
   }
 
   String _formatMap(Map<String, dynamic> map) {
     if (map.isEmpty) return '(empty)';
-
-    return map.entries
-        .map((e) => '${e.key}: ${e.value}')
-        .join('\n');
+    return map.entries.map((e) => '${e.key}: ${e.value}').join('\n');
   }
 
   String _prettyJson(dynamic data) {
     try {
-      const encoder = JsonEncoder.withIndent('  ');
-      return encoder.convert(data);
+      return const JsonEncoder.withIndent('  ').convert(data);
     } catch (_) {
       return data.toString();
     }

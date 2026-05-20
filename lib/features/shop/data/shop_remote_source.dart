@@ -13,4 +13,9 @@ class ShopRemoteSource {
     final response = await _dio.put('/vendor/shop', data: data);
     return response.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> getReviewStats() async {
+    final response = await _dio.get('/vendor/shop-reviews/stats');
+    return response.data as Map<String, dynamic>;
+  }
 }

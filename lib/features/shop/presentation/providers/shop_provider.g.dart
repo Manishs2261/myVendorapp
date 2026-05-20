@@ -40,6 +40,24 @@ final shopRepositoryProvider = AutoDisposeProvider<IShopRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ShopRepositoryRef = AutoDisposeProviderRef<IShopRepository>;
+String _$shopReviewStatsHash() => r'5b6552c0fffd48225e6af5eb746503caeff6cbf9';
+
+/// See also [shopReviewStats].
+@ProviderFor(shopReviewStats)
+final shopReviewStatsProvider =
+    AutoDisposeFutureProvider<ShopReviewStats>.internal(
+      shopReviewStats,
+      name: r'shopReviewStatsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$shopReviewStatsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ShopReviewStatsRef = AutoDisposeFutureProviderRef<ShopReviewStats>;
 String _$shopNotifierHash() => r'211634f2465ddcae0e50f4949df3e619f5650820';
 
 /// See also [ShopNotifier].

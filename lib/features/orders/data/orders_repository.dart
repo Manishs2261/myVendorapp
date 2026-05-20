@@ -1,3 +1,4 @@
+import '../../../core/utils/json_parser.dart';
 import '../../../shared/models/paginated_response.dart';
 import '../domain/i_orders_repository.dart';
 import '../domain/order_models.dart';
@@ -13,18 +14,22 @@ class OrdersRepository implements IOrdersRepository {
     String? status,
   }) async {
     final data = await _remote.getOrders(page: page, status: status);
-    return PaginatedResponse.fromJson(data, Order.fromJson);
+    return parseJson(
+      'PaginatedResponse<Order>',
+      data,
+      (json) => PaginatedResponse.fromJson(json, Order.fromJson),
+    );
   }
 
   @override
   Future<Order> getOrder(int id) async {
     final data = await _remote.getOrder(id);
-    return Order.fromJson(data);
+    return parseJson('Order', data, Order.fromJson);
   }
 
   @override
   Future<Order> updateStatus(int id, OrderStatus status) async {
     final data = await _remote.updateStatus(id, status.name);
-    return Order.fromJson(data);
+    return parseJson('Order', data, Order.fromJson);
   }
 }
