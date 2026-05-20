@@ -37,13 +37,16 @@ const _colorSwatches = [
 // ---------------------------------------------------------------------------
 
 class AddProductScreen extends ConsumerStatefulWidget {
-  const AddProductScreen({super.key});
+  final Product? initialProduct;
+  const AddProductScreen({super.key, this.initialProduct});
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
 }
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
+  bool get _isEditing => widget.initialProduct != null;
+
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
 
@@ -54,8 +57,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _tagInputCtrl = TextEditingController();
   final List<String> _tags = [];
 
-  // Media
+  // Media — existing URLs (edit mode) + newly picked files
   final _picker = ImagePicker();
+  final List<String> _existingImageUrls = [];
   final List<XFile> _selectedImages = [];
   XFile? _selectedVideo;
 
@@ -82,6 +86,38 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Location
   final _latCtrl = TextEditingController();
   final _lngCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialProduct != null) _prefillFromProduct(widget.initialProduct!);
+  }
+
+  void _prefillFromProduct(Product p) {
+    _nameCtrl.text = p.name;
+    _descCtrl.text = p.description;
+    _brandCtrl.text = p.brand ?? '';
+    _tags.addAll(p.tags);
+    _existingImageUrls.addAll(p.imageUrls);
+    for (final e in p.specifications.entries) {
+      _specs.add((
+        key: TextEditingController(text: e.key),
+        value: TextEditingController(text: e.value),
+      ));
+    }
+    for (final hex in p.colorVariations) {
+      _colorSelections[hex] = true;
+    }
+    _priceCtrl.text = p.price.toString();
+    _mrpCtrl.text = p.originalPrice?.toString() ?? '';
+    _discountCtrl.text = p.discountPercentage?.toString() ?? '';
+    _stockCtrl.text = p.stock.toString();
+    _status = (p.status == ProductStatus.outOfStock) ? 'inactive' : p.status.name;
+    _selectedUnit = p.unit;
+    _selectedCategoryId = p.categoryId;
+    _latCtrl.text = p.latitude?.toString() ?? '';
+    _lngCtrl.text = p.longitude?.toString() ?? '';
+  }
 
   @override
   void dispose() {
@@ -164,7 +200,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _showSnack('Please select a category');
       return;
     }
-    if (_selectedImages.isEmpty) {
+    if (!_isEditing && _selectedImages.isEmpty) {
       _showSnack('Please add at least one product image');
       return;
     }
@@ -198,18 +234,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             .toList(),
         latitude: double.tryParse(_latCtrl.text.trim()),
         longitude: double.tryParse(_lngCtrl.text.trim()),
+        images: List.from(_existingImageUrls),
       );
 
-      final repo =
-          ref.read(productsRepositoryProvider) as ProductsRepository;
-      await repo.createProductMultipart(
-        form: form,
-        images: _selectedImages,
-        video: _selectedVideo,
-      );
+      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
+
+      if (_isEditing) {
+        await repo.updateProduct(widget.initialProduct!.id, form);
+        ref.invalidate(productDetailProvider(widget.initialProduct!.id));
+      } else {
+        await repo.createProductMultipart(
+          form: form,
+          images: _selectedImages,
+          video: _selectedVideo,
+        );
+      }
 
       if (mounted) {
-        _showSnack('Product added successfully');
+        _showSnack(_isEditing ? 'Product updated!' : 'Product added successfully');
         ref.invalidate(productsListProvider);
         context.pop();
       }
@@ -233,17 +275,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       isLoading: _loading,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Add Product'),
-          actions: [
-            // Padding(
-            //   padding: const EdgeInsets.only(right: 12),
-            //   child: AppButton(
-            //     label: 'Publish Product',
-            //     loading: _loading,
-            //     onTap: _submit,
-            //   ),
-            // ),
-          ],
+          title: Text(_isEditing ? 'Edit Product' : 'Add Product'),
         ),
         body: Form(
           key: _formKey,
@@ -267,7 +299,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 _buildLocationSection(),
                 const SizedBox(height: 24),
                 AppButton(
-                  label: 'Add Product',
+                  label: _isEditing ? 'Save Changes' : 'Add Product',
                   loading: _loading,
                   onTap: _submit,
                 ),
@@ -382,7 +414,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     ?.copyWith(color: AppColors.textMuted),
               ),
               Text(
-                '${_selectedImages.length}/10',
+                '${_existingImageUrls.length + _selectedImages.length}/10',
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
@@ -409,12 +441,57 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   Widget _buildImageGrid() {
     const tileSize = 90.0;
-    final canAdd = _selectedImages.length < 10;
+    final totalCount = _existingImageUrls.length + _selectedImages.length;
+    final canAdd = !_isEditing && totalCount < 10;
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
+        // Existing URL thumbnails (edit mode)
+        ..._existingImageUrls.asMap().entries.map((entry) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  entry.value,
+                  width: tileSize,
+                  height: tileSize,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: tileSize,
+                    height: tileSize,
+                    color: AppColors.surface3,
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: AppColors.textMuted),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: -6,
+                right: -6,
+                child: GestureDetector(
+                  onTap: () => setState(
+                      () => _existingImageUrls.removeAt(entry.key)),
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close,
+                        size: 12, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
+
+        // Newly picked local image tiles (create mode only)
         ..._selectedImages.asMap().entries.map((entry) {
           return Stack(
             clipBehavior: Clip.none,
@@ -462,6 +539,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ],
           );
         }),
+
         if (canAdd)
           GestureDetector(
             onTap: _pickImages,

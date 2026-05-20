@@ -10,6 +10,7 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/splash_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/orders/presentation/screens/orders_list_screen.dart';
+import '../../features/products/domain/product_models.dart';
 import '../../features/products/presentation/screens/add_product_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
 import '../../features/products/presentation/screens/products_list_screen.dart';
@@ -97,6 +98,12 @@ GoRouter appRouter(Ref ref) {
             path: '/products/:id',
             builder: (_, state) =>
                 ProductDetailScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/products/:id/edit',
+            builder: (_, state) => AddProductScreen(
+              initialProduct: state.extra as Product?,
+            ),
           ),
           GoRoute(
             path: RouteNames.addProduct,

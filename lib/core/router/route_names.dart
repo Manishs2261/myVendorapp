@@ -12,6 +12,9 @@ abstract final class RouteNames {
   static const shop = '/shop';
   static const profile = '/profile';
 
+  static const editProduct = '/products/:id/edit';
+
   static String productDetailPath(String id) => '/products/$id';
+  static String editProductPath(String id) => '/products/$id/edit';
   static String orderDetailPath(String id) => '/orders/$id';
 }

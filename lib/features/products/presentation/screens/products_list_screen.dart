@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/router/route_names.dart';
-import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
-import '../../../../shared/widgets/status_badge.dart';
 import '../providers/products_provider.dart';
+import '../widgets/product_card.dart';
 
 class ProductsListScreen extends ConsumerWidget {
   const ProductsListScreen({super.key});
@@ -28,24 +28,14 @@ class ProductsListScreen extends ConsumerWidget {
         ),
         data: (page) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(productsListProvider()),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: page.data.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (_, i) {
-              final product = page.data[i];
-              return Card(
-                child: ListTile(
-                  title: Text(product.name),
-                  subtitle: Text(AppFormatters.currency(product.price)),
-                  trailing: StatusBadge(status: product.status.name),
-                  onTap: () => context.push(
-                    RouteNames.productDetailPath(product.id.toString()),
-                  ),
+          child: page.data.isEmpty
+              ? const Center(child: Text('No products yet.'))
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: page.data.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) => ProductCard(product: page.data[i]),
                 ),
-              );
-            },
-          ),
         ),
       ),
     );

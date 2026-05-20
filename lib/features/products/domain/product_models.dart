@@ -43,6 +43,14 @@ class Product {
   final List<String> colorVariations;
   final double? latitude;
   final double? longitude;
+  final int viewCount;
+  final bool isSponsored;
+  final String sponsorStatus;
+  final bool isFeatured;
+  final double rating;
+  final int reviewCount;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   const Product({
     required this.id,
@@ -63,6 +71,14 @@ class Product {
     this.colorVariations = const [],
     this.latitude,
     this.longitude,
+    this.viewCount = 0,
+    this.isSponsored = false,
+    this.sponsorStatus = 'none',
+    this.isFeatured = false,
+    this.rating = 0.0,
+    this.reviewCount = 0,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -84,7 +100,7 @@ class Product {
               .toList() ??
           [],
       categoryId: json['category_id'] as int?,
-      category: json['category'] as String?,
+      category: json['category'] as String? ?? json['category_name'] as String?,
       brand: json['brand'] as String?,
       unit: json['unit'] as String?,
       tags: (json['tags'] as List?)?.cast<String>() ?? [],
@@ -95,6 +111,18 @@ class Product {
           (json['color_variations'] as List?)?.cast<String>() ?? [],
       latitude: double.tryParse(json['latitude']?.toString() ?? ''),
       longitude: double.tryParse(json['longitude']?.toString() ?? ''),
+      viewCount: json['view_count'] as int? ?? 0,
+      isSponsored: json['is_sponsored'] as bool? ?? false,
+      sponsorStatus: json['sponsor_request_status'] as String? ?? 'none',
+      isFeatured: json['is_featured'] as bool? ?? false,
+      rating: double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
+      reviewCount: json['review_count'] as int? ?? 0,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 }
@@ -115,6 +143,7 @@ class ProductForm {
   final List<String> colorVariations;
   final double? latitude;
   final double? longitude;
+  final List<String> images;
 
   const ProductForm({
     required this.name,
@@ -132,6 +161,7 @@ class ProductForm {
     this.colorVariations = const [],
     this.latitude,
     this.longitude,
+    this.images = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -151,5 +181,6 @@ class ProductForm {
         if (colorVariations.isNotEmpty) 'color_variations': colorVariations,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
+        if (images.isNotEmpty) 'images': images,
       };
 }
