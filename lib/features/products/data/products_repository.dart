@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 import '../../../core/utils/json_parser.dart';
 import '../../../shared/models/paginated_response.dart';
 import '../domain/i_products_repository.dart';
@@ -33,6 +35,19 @@ class ProductsRepository implements IProductsRepository {
     return parseJson('Product', data, Product.fromJson);
   }
 
+  Future<Product> createProductMultipart({
+    required ProductForm form,
+    required List<XFile> images,
+    XFile? video,
+  }) async {
+    final data = await _remote.createProductMultipart(
+      data: form.toJson(),
+      images: images,
+      video: video,
+    );
+    return parseJson('Product', data, Product.fromJson);
+  }
+
   @override
   Future<Product> updateProduct(int id, ProductForm form) async {
     final data = await _remote.updateProduct(id, form.toJson());
@@ -41,4 +56,13 @@ class ProductsRepository implements IProductsRepository {
 
   @override
   Future<void> deleteProduct(int id) => _remote.deleteProduct(id);
+
+  @override
+  Future<List<Category>> getCategories() async {
+    final data = await _remote.getCategories();
+    return data
+        .map((e) => parseJson(
+            'Category', e as Map<String, dynamic>, Category.fromJson))
+        .toList();
+  }
 }

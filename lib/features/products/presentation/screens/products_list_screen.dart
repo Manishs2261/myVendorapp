@@ -17,7 +17,7 @@ class ProductsListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Products')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('${RouteNames.products}/new'),
+        onPressed: () => context.push(RouteNames.addProduct),
         child: const Icon(Icons.add),
       ),
       body: productsAsync.when(

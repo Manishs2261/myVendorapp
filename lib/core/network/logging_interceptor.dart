@@ -86,9 +86,25 @@ $body
     handler.next(response);
   }
 
+
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final body = _prettyJson(err.response?.data);
+    final requestHeaders = _formatMap(err.requestOptions.headers);
+
+    final requestBody = err.requestOptions.data != null
+        ? _prettyJson(err.requestOptions.data)
+        : 'none';
+
+    final responseHeaders = err.response != null
+        ? _formatMap(
+      err.response!.headers.map.map(
+            (k, v) => MapEntry(k, v.join(', ')),
+      ),
+    )
+        : 'none';
+
+    final responseBody = _prettyJson(err.response?.data);
 
     AppLogger.error('''
 [API] ERROR =======================================
@@ -97,13 +113,23 @@ ${err.response?.statusCode ?? 'N/A'}
 ${err.requestOptions.method}
 ${err.requestOptions.uri}
 
+REQUEST HEADERS:
+$requestHeaders
+
+REQUEST BODY:
+$requestBody
+
+RESPONSE HEADERS:
+$responseHeaders
+
+RESPONSE BODY:
+$responseBody
+
 MESSAGE:
 ${err.message}
 
-BODY:
-$body
-
-=============================================''');
+===================================================
+''');
 
     handler.next(err);
   }
@@ -111,7 +137,15 @@ $body
   String _buildCurl(RequestOptions options) {
     final sb = StringBuffer('curl -X ${options.method}');
     options.headers.forEach((k, v) => sb.write(" \\\n-H '$k: $v'"));
-    if (options.data != null) {
+    if (options.data is FormData) {
+      final formData = options.data as FormData;
+      for (final field in formData.fields) {
+        sb.write(' \\\n-F "${field.key}=${field.value}"');
+      }
+      for (final file in formData.files) {
+        sb.write(' \\\n-F "${file.key}=@<${file.value.filename ?? 'file'}>"');
+      }
+    } else if (options.data != null) {
       sb.write(" \\\n-d '${jsonEncode(options.data)}'");
     }
     sb.write(" \\\n'${options.uri}'");
@@ -125,6 +159,26 @@ $body
 
   String _prettyJson(dynamic data) {
     try {
+      if (data is FormData) {
+        final map = <String, dynamic>{};
+
+        // Normal fields
+        for (final field in data.fields) {
+          map[field.key] = field.value;
+        }
+
+        // Files
+        for (final file in data.files) {
+          map[file.key] = {
+            'filename': file.value.filename,
+            'contentType': file.value.contentType.toString(),
+            'length': file.value.length,
+          };
+        }
+
+        return const JsonEncoder.withIndent('  ').convert(map);
+      }
+
       return const JsonEncoder.withIndent('  ').convert(data);
     } catch (_) {
       return data.toString();

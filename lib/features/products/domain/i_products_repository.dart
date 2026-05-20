@@ -7,4 +7,5 @@ abstract class IProductsRepository {
   Future<Product> createProduct(ProductForm form);
   Future<Product> updateProduct(int id, ProductForm form);
   Future<void> deleteProduct(int id);
+  Future<List<Category>> getCategories();
 }

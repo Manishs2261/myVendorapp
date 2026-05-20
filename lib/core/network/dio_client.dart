@@ -31,7 +31,7 @@ class DioClient {
 
   static Interceptor _errorInterceptor() {
     return InterceptorsWrapper(
-      onError: (err, handler) {
+      onError: (err, handler,) {
         if (err.type == DioExceptionType.connectionError ||
             err.type == DioExceptionType.connectionTimeout) {
           handler.next(

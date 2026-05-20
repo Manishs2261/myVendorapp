@@ -28,38 +28,17 @@ class MainShell extends StatelessWidget {
 
     return Scaffold(
       body: child,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go(RouteNames.addProduct),
-        tooltip: 'Add Product',
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
         child: Row(
-          children: [
-            ..._tabs.sublist(0, 2).asMap().entries.map((e) =>
-              _NavItem(
-                icon: e.value.icon,
-                label: e.value.label,
-                selected: currentIndex == e.key,
-                onTap: () => context.go(_tabs[e.key].path),
-                selectedColor: colorScheme.primary,
-              ),
+          children: _tabs.asMap().entries.map((e) =>
+            _NavItem(
+              icon: e.value.icon,
+              label: e.value.label,
+              selected: currentIndex == e.key,
+              onTap: () => context.go(_tabs[e.key].path),
+              selectedColor: colorScheme.primary,
             ),
-            const Spacer(),
-            const Spacer(),
-            ..._tabs.sublist(2).asMap().entries.map((e) =>
-              _NavItem(
-                icon: e.value.icon,
-                label: e.value.label,
-                selected: currentIndex == e.key + 2,
-                onTap: () => context.go(_tabs[e.key + 2].path),
-                selectedColor: colorScheme.primary,
-              ),
-            ),
-          ],
+          ).toList(),
         ),
       ),
     );

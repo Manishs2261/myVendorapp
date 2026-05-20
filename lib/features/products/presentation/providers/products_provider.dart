@@ -30,3 +30,7 @@ Future<PaginatedResponse<Product>> productsList(
 @riverpod
 Future<Product> productDetail(Ref ref, int id) =>
     ref.read(productsRepositoryProvider).getProduct(id);
+
+// Manual provider — no code generation needed
+final categoriesProvider = FutureProvider<List<Category>>((ref) =>
+    ref.read(productsRepositoryProvider).getCategories());
