@@ -16,6 +16,7 @@ class ProductReviewsScreen extends ConsumerStatefulWidget {
 
 class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
   Timer? _debounce;
 
   ProductReviewStats? _stats;
@@ -26,6 +27,8 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
   int _page = 1;
   int _pages = 1;
   bool _loadingReviews = false;
+  bool _loadingMore = false;
+  bool _hasMore = false;
   String? _reviewError;
 
   int? _ratingFilter;
@@ -36,13 +39,24 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
     super.initState();
     _loadAll();
     _searchCtrl.addListener(_onSearchChanged);
+    _scrollCtrl.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 250) {
+      if (!_loadingMore && !_loadingReviews && _hasMore) {
+        _loadMore();
+      }
+    }
   }
 
   void _onSearchChanged() {
@@ -53,7 +67,11 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
   }
 
   void _resetAndLoad() {
-    setState(() => _page = 1);
+    setState(() {
+      _page = 1;
+      _reviews = [];
+      _hasMore = false;
+    });
     _loadReviews();
   }
 
@@ -76,6 +94,7 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
     }
   }
 
+  // Loads page 1, replacing the list.
   Future<void> _loadReviews() async {
     setState(() {
       _loadingReviews = true;
@@ -83,7 +102,7 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
     });
     try {
       final data = await ref.read(shopRemoteSourceProvider).getProductReviews(
-            page: _page,
+            page: 1,
             search: _searchCtrl.text.trim(),
             rating: _ratingFilter,
             sort: _sort,
@@ -93,7 +112,9 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
         setState(() {
           _reviews = result.items;
           _total = result.total;
+          _page = result.page;
           _pages = result.pages;
+          _hasMore = result.page < result.pages;
         });
       }
     } catch (e) {
@@ -103,25 +124,42 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
     }
   }
 
+  // Appends the next page to the existing list.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final data = await ref.read(shopRemoteSourceProvider).getProductReviews(
+            page: _page + 1,
+            search: _searchCtrl.text.trim(),
+            rating: _ratingFilter,
+            sort: _sort,
+          );
+      final result = ProductReviewsPage.fromJson(data);
+      if (mounted) {
+        setState(() {
+          _reviews.addAll(result.items);
+          _page = result.page;
+          _total = result.total;
+          _pages = result.pages;
+          _hasMore = result.page < result.pages;
+        });
+      }
+    } catch (_) {
+      // silently ignore; user can scroll back up to trigger retry
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
   void _setRating(int? rating) {
-    setState(() {
-      _ratingFilter = rating;
-      _page = 1;
-    });
-    _loadReviews();
+    setState(() => _ratingFilter = rating);
+    _resetAndLoad();
   }
 
   void _setSort(String sort) {
-    setState(() {
-      _sort = sort;
-      _page = 1;
-    });
-    _loadReviews();
-  }
-
-  void _goToPage(int page) {
-    setState(() => _page = page);
-    _loadReviews();
+    setState(() => _sort = sort);
+    _resetAndLoad();
   }
 
   @override
@@ -144,6 +182,7 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
         onRefresh: _loadAll,
         color: AppColors.primary,
         child: ListView(
+          controller: _scrollCtrl,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             _StatsCard(stats: _stats, loading: _loadingStats),
@@ -176,17 +215,29 @@ class _ProductReviewsScreenState extends ConsumerState<ProductReviewsScreen> {
                 )
               else if (_reviews.isEmpty)
                 const _EmptyState()
-              else
+              else ...[
                 ..._reviews.map((r) => _ReviewCard(review: r)),
-              if (_pages > 1) ...[
-                const SizedBox(height: 16),
-                _PaginationRow(
-                  page: _page,
-                  pages: _pages,
-                  total: _total,
-                  onPrev: _page > 1 ? () => _goToPage(_page - 1) : null,
-                  onNext: _page < _pages ? () => _goToPage(_page + 1) : null,
-                ),
+                const SizedBox(height: 8),
+                if (_loadingMore)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (!_hasMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        'All $_total reviews loaded',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ],
           ],
@@ -708,46 +759,6 @@ class _StarRow extends StatelessWidget {
   }
 }
 
-class _PaginationRow extends StatelessWidget {
-  final int page;
-  final int pages;
-  final int total;
-  final VoidCallback? onPrev;
-  final VoidCallback? onNext;
-
-  const _PaginationRow({
-    required this.page,
-    required this.pages,
-    required this.total,
-    required this.onPrev,
-    required this.onNext,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final start = (page - 1) * 20 + 1;
-    final end = (page * 20).clamp(0, total);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          onPressed: onPrev,
-          icon: const Icon(Icons.chevron_left),
-          color: onPrev != null ? AppColors.textPrimary : AppColors.textDim,
-        ),
-        Text(
-          '$start–$end of $total',
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-        ),
-        IconButton(
-          onPressed: onNext,
-          icon: const Icon(Icons.chevron_right),
-          color: onNext != null ? AppColors.textPrimary : AppColors.textDim,
-        ),
-      ],
-    );
-  }
-}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
