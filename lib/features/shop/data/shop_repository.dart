@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 import '../../../core/utils/json_parser.dart';
 import '../domain/i_shop_repository.dart';
 import '../domain/shop_models.dart';
@@ -18,4 +20,22 @@ class ShopRepository implements IShopRepository {
     final updated = await _remote.updateShop(data);
     return parseJson('Shop', updated, Shop.fromJson);
   }
+
+  @override
+  Future<String> uploadLogo(XFile file) => _remote.uploadLogo(file);
+
+  @override
+  Future<String> uploadBanner(XFile file) => _remote.uploadBanner(file);
+
+  @override
+  Future<List<String>> uploadGallery(List<XFile> files) =>
+      _remote.uploadGallery(files);
+
+  @override
+  Future<void> removeGalleryImage(String url) =>
+      _remote.removeGalleryImage(url);
+
+  @override
+  Future<String> uploadIdDocument(XFile file) =>
+      _remote.uploadIdDocument(file);
 }

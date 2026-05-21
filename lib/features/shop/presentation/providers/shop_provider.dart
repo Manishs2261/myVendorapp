@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../data/shop_remote_source.dart';
@@ -28,6 +29,64 @@ class ShopNotifier extends _$ShopNotifier {
     state = await AsyncValue.guard(
       () => ref.read(shopRepositoryProvider).updateShop(data),
     );
+  }
+
+  Future<void> uploadLogo(XFile file) async {
+    final prev = state;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final url = await ref.read(shopRepositoryProvider).uploadLogo(file);
+      final shop = prev.valueOrNull;
+      if (shop == null) return ref.read(shopRepositoryProvider).getShop();
+      return shop.copyWith(logoUrl: url);
+    });
+  }
+
+  Future<void> uploadBanner(XFile file) async {
+    final prev = state;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final url = await ref.read(shopRepositoryProvider).uploadBanner(file);
+      final shop = prev.valueOrNull;
+      if (shop == null) return ref.read(shopRepositoryProvider).getShop();
+      return shop.copyWith(bannerUrl: url);
+    });
+  }
+
+  Future<void> uploadGallery(List<XFile> files) async {
+    final prev = state;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final urls = await ref.read(shopRepositoryProvider).uploadGallery(files);
+      final shop = prev.valueOrNull;
+      if (shop == null) return ref.read(shopRepositoryProvider).getShop();
+      return shop.copyWith(gallery: [...shop.gallery, ...urls]);
+    });
+  }
+
+  Future<void> removeGalleryImage(String url) async {
+    final prev = state;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(shopRepositoryProvider).removeGalleryImage(url);
+      final shop = prev.valueOrNull;
+      if (shop == null) return ref.read(shopRepositoryProvider).getShop();
+      return shop.copyWith(
+        gallery: shop.gallery.where((u) => u != url).toList(),
+      );
+    });
+  }
+
+  Future<void> uploadIdDocument(XFile file) async {
+    final prev = state;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final url =
+          await ref.read(shopRepositoryProvider).uploadIdDocument(file);
+      final shop = prev.valueOrNull;
+      if (shop == null) return ref.read(shopRepositoryProvider).getShop();
+      return shop.copyWith(idDocumentUrl: url);
+    });
   }
 }
 
