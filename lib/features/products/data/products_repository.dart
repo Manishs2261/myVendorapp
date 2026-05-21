@@ -81,6 +81,10 @@ class ProductsRepository implements IProductsRepository {
   Future<void> deleteProduct(int id) => _remote.deleteProduct(id);
 
   @override
+  Future<void> requestSponsorship(int productId) =>
+      _remote.requestSponsorship(productId);
+
+  @override
   Future<List<Category>> getCategories() async {
     final data = await _remote.getCategories();
     return data

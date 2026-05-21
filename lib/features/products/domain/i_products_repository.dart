@@ -21,4 +21,5 @@ abstract class IProductsRepository {
   Future<Product> updateProduct(int id, ProductForm form);
   Future<void> deleteProduct(int id);
   Future<List<Category>> getCategories();
+  Future<void> requestSponsorship(int productId);
 }

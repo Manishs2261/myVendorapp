@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../domain/shop_analytics_models.dart';
 import '../providers/shop_analytics_provider.dart';
@@ -17,6 +18,10 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => MainShell.scaffoldKey.currentState?.openDrawer(),
+        ),
         title: const Text('Dashboard'),
         actions: [
           IconButton(

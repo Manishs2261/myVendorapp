@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../router/route_names.dart';
+import 'app_drawer.dart';
 
 class MainShell extends StatelessWidget {
+  static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+
   final Widget child;
   const MainShell({super.key, required this.child});
 
@@ -27,6 +30,8 @@ class MainShell extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      key: MainShell.scaffoldKey,
+      drawer: const AppDrawer(),
       body: child,
       bottomNavigationBar: BottomAppBar(
         child: Row(

@@ -102,4 +102,7 @@ class ProductsRemoteSource {
     return response.data as List<dynamic>;
   }
 
+  Future<void> requestSponsorship(int productId) async {
+    await _dio.post('/vendor/products/$productId/sponsor-request');
+  }
 }

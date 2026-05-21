@@ -14,8 +14,19 @@ import '../../features/products/domain/product_models.dart';
 import '../../features/products/presentation/screens/add_product_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
 import '../../features/products/presentation/screens/products_list_screen.dart';
+import '../../features/analytics/presentation/screens/analytics_screen.dart';
+import '../../features/help/presentation/screens/help_feedback_screen.dart';
+import '../../features/marketplace/presentation/screens/marketplace_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/payments/presentation/screens/payments_screen.dart';
+import '../../features/products/presentation/screens/product_reviews_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/promotions/presentation/screens/promotions_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/shop/presentation/screens/shop_profile_screen.dart';
+import '../../features/shop/presentation/screens/shop_reviews_screen.dart';
+import '../../features/shop/presentation/screens/storefront_editor_screen.dart';
+import '../../features/sponsorship/presentation/screens/sponsorship_screen.dart';
 import '../widgets/main_shell.dart';
 import 'route_names.dart';
 
@@ -125,6 +136,50 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
             path: RouteNames.profile,
             builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.analytics,
+            builder: (_, _) => const AnalyticsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.marketplace,
+            builder: (_, _) => const MarketplaceScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.promotions,
+            builder: (_, _) => const PromotionsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.sponsorship,
+            builder: (_, _) => const SponsorshipScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.shopReviews,
+            builder: (_, _) => const ShopReviewsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.productReviews,
+            builder: (_, _) => const ProductReviewsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.helpFeedback,
+            builder: (_, _) => const HelpFeedbackScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.storefrontEditor,
+            builder: (_, _) => const StorefrontEditorScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.payments,
+            builder: (_, _) => const PaymentsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.notifications,
+            builder: (_, _) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.settings,
+            builder: (_, _) => const SettingsScreen(),
           ),
         ],
       ),

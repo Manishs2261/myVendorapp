@@ -14,6 +14,18 @@ abstract final class RouteNames {
 
   static const editProduct = '/products/:id/edit';
 
+  static const analytics        = '/analytics';
+  static const marketplace      = '/marketplace';
+  static const promotions       = '/promotions';
+  static const sponsorship      = '/sponsorship';
+  static const shopReviews      = '/shop-reviews';
+  static const productReviews   = '/product-reviews';
+  static const helpFeedback     = '/help-feedback';
+  static const storefrontEditor = '/storefront-editor';
+  static const payments         = '/payments';
+  static const notifications    = '/notifications';
+  static const settings         = '/settings';
+
   static String productDetailPath(String id) => '/products/$id';
   static String editProductPath(String id) => '/products/$id/edit';
   static String orderDetailPath(String id) => '/orders/$id';

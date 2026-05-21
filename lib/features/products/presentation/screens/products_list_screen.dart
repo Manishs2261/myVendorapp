@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../domain/product_models.dart';
 import '../providers/products_provider.dart';
@@ -206,6 +207,10 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => MainShell.scaffoldKey.currentState?.openDrawer(),
+        ),
         title: const Text('Products'),
         actions: [
           IconButton(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../providers/shop_provider.dart';
@@ -12,7 +13,13 @@ class ShopProfileScreen extends ConsumerWidget {
     final shopAsync = ref.watch(shopNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Shop')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => MainShell.scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: const Text('My Shop'),
+      ),
       body: shopAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
