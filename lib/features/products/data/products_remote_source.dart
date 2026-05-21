@@ -7,14 +7,36 @@ class ProductsRemoteSource {
   final Dio _dio;
   ProductsRemoteSource(this._dio);
 
-  Future<Map<String, dynamic>> getProducts({int page = 1, String? status}) async {
+  Future<Map<String, dynamic>> getProducts({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? status,
+    int? categoryId,
+    String? stockFilter,
+    String sortBy = 'recent',
+    bool discountOnly = false,
+    double? minPrice,
+    double? maxPrice,
+    int? minStock,
+    int? maxStock,
+  }) async {
     final response = await _dio.get(
       '/vendor/products',
       queryParameters: {
         'page': page,
-        'limit': 20,
-        'status': status,
-      }..removeWhere((_, v) => v == null),
+        'limit': limit,
+        'sort_by': sortBy,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (status != null) 'status': status,
+        if (categoryId != null) 'category_id': categoryId,
+        if (stockFilter != null) 'stock_filter': stockFilter,
+        if (discountOnly) 'discount_only': true,
+        if (minPrice != null) 'min_price': minPrice,
+        if (maxPrice != null) 'max_price': maxPrice,
+        if (minStock != null) 'stock_min': minStock,
+        if (maxStock != null) 'stock_max': maxStock,
+      },
     );
     return response.data as Map<String, dynamic>;
   }

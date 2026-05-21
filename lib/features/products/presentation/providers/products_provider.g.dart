@@ -44,7 +44,7 @@ final productsRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProductsRepositoryRef = AutoDisposeProviderRef<IProductsRepository>;
-String _$productsListHash() => r'98c07e78d5cbb92c2878dc0823e4090eb6dd99e2';
+String _$productsListHash() => r'3794b55734c020b60e74bd7147b5435b500d2f00';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -78,15 +78,54 @@ class ProductsListFamily
   const ProductsListFamily();
 
   /// See also [productsList].
-  ProductsListProvider call({int page = 1, String? status}) {
-    return ProductsListProvider(page: page, status: status);
+  ProductsListProvider call({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? status,
+    int? categoryId,
+    String? stockFilter,
+    String sortBy = 'recent',
+    bool discountOnly = false,
+    double? minPrice,
+    double? maxPrice,
+    int? minStock,
+    int? maxStock,
+  }) {
+    return ProductsListProvider(
+      page: page,
+      limit: limit,
+      search: search,
+      status: status,
+      categoryId: categoryId,
+      stockFilter: stockFilter,
+      sortBy: sortBy,
+      discountOnly: discountOnly,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      minStock: minStock,
+      maxStock: maxStock,
+    );
   }
 
   @override
   ProductsListProvider getProviderOverride(
     covariant ProductsListProvider provider,
   ) {
-    return call(page: provider.page, status: provider.status);
+    return call(
+      page: provider.page,
+      limit: provider.limit,
+      search: provider.search,
+      status: provider.status,
+      categoryId: provider.categoryId,
+      stockFilter: provider.stockFilter,
+      sortBy: provider.sortBy,
+      discountOnly: provider.discountOnly,
+      minPrice: provider.minPrice,
+      maxPrice: provider.maxPrice,
+      minStock: provider.minStock,
+      maxStock: provider.maxStock,
+    );
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -108,21 +147,56 @@ class ProductsListFamily
 class ProductsListProvider
     extends AutoDisposeFutureProvider<PaginatedResponse<Product>> {
   /// See also [productsList].
-  ProductsListProvider({int page = 1, String? status})
-    : this._internal(
-        (ref) =>
-            productsList(ref as ProductsListRef, page: page, status: status),
-        from: productsListProvider,
-        name: r'productsListProvider',
-        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-            ? null
-            : _$productsListHash,
-        dependencies: ProductsListFamily._dependencies,
-        allTransitiveDependencies:
-            ProductsListFamily._allTransitiveDependencies,
-        page: page,
-        status: status,
-      );
+  ProductsListProvider({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? status,
+    int? categoryId,
+    String? stockFilter,
+    String sortBy = 'recent',
+    bool discountOnly = false,
+    double? minPrice,
+    double? maxPrice,
+    int? minStock,
+    int? maxStock,
+  }) : this._internal(
+         (ref) => productsList(
+           ref as ProductsListRef,
+           page: page,
+           limit: limit,
+           search: search,
+           status: status,
+           categoryId: categoryId,
+           stockFilter: stockFilter,
+           sortBy: sortBy,
+           discountOnly: discountOnly,
+           minPrice: minPrice,
+           maxPrice: maxPrice,
+           minStock: minStock,
+           maxStock: maxStock,
+         ),
+         from: productsListProvider,
+         name: r'productsListProvider',
+         debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+             ? null
+             : _$productsListHash,
+         dependencies: ProductsListFamily._dependencies,
+         allTransitiveDependencies:
+             ProductsListFamily._allTransitiveDependencies,
+         page: page,
+         limit: limit,
+         search: search,
+         status: status,
+         categoryId: categoryId,
+         stockFilter: stockFilter,
+         sortBy: sortBy,
+         discountOnly: discountOnly,
+         minPrice: minPrice,
+         maxPrice: maxPrice,
+         minStock: minStock,
+         maxStock: maxStock,
+       );
 
   ProductsListProvider._internal(
     super._createNotifier, {
@@ -132,11 +206,31 @@ class ProductsListProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.page,
+    required this.limit,
+    required this.search,
     required this.status,
+    required this.categoryId,
+    required this.stockFilter,
+    required this.sortBy,
+    required this.discountOnly,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.minStock,
+    required this.maxStock,
   }) : super.internal();
 
   final int page;
+  final int limit;
+  final String? search;
   final String? status;
+  final int? categoryId;
+  final String? stockFilter;
+  final String sortBy;
+  final bool discountOnly;
+  final double? minPrice;
+  final double? maxPrice;
+  final int? minStock;
+  final int? maxStock;
 
   @override
   Override overrideWith(
@@ -153,7 +247,17 @@ class ProductsListProvider
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         page: page,
+        limit: limit,
+        search: search,
         status: status,
+        categoryId: categoryId,
+        stockFilter: stockFilter,
+        sortBy: sortBy,
+        discountOnly: discountOnly,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        minStock: minStock,
+        maxStock: maxStock,
       ),
     );
   }
@@ -167,14 +271,34 @@ class ProductsListProvider
   bool operator ==(Object other) {
     return other is ProductsListProvider &&
         other.page == page &&
-        other.status == status;
+        other.limit == limit &&
+        other.search == search &&
+        other.status == status &&
+        other.categoryId == categoryId &&
+        other.stockFilter == stockFilter &&
+        other.sortBy == sortBy &&
+        other.discountOnly == discountOnly &&
+        other.minPrice == minPrice &&
+        other.maxPrice == maxPrice &&
+        other.minStock == minStock &&
+        other.maxStock == maxStock;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, page.hashCode);
+    hash = _SystemHash.combine(hash, limit.hashCode);
+    hash = _SystemHash.combine(hash, search.hashCode);
     hash = _SystemHash.combine(hash, status.hashCode);
+    hash = _SystemHash.combine(hash, categoryId.hashCode);
+    hash = _SystemHash.combine(hash, stockFilter.hashCode);
+    hash = _SystemHash.combine(hash, sortBy.hashCode);
+    hash = _SystemHash.combine(hash, discountOnly.hashCode);
+    hash = _SystemHash.combine(hash, minPrice.hashCode);
+    hash = _SystemHash.combine(hash, maxPrice.hashCode);
+    hash = _SystemHash.combine(hash, minStock.hashCode);
+    hash = _SystemHash.combine(hash, maxStock.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -187,8 +311,38 @@ mixin ProductsListRef
   /// The parameter `page` of this provider.
   int get page;
 
+  /// The parameter `limit` of this provider.
+  int get limit;
+
+  /// The parameter `search` of this provider.
+  String? get search;
+
   /// The parameter `status` of this provider.
   String? get status;
+
+  /// The parameter `categoryId` of this provider.
+  int? get categoryId;
+
+  /// The parameter `stockFilter` of this provider.
+  String? get stockFilter;
+
+  /// The parameter `sortBy` of this provider.
+  String get sortBy;
+
+  /// The parameter `discountOnly` of this provider.
+  bool get discountOnly;
+
+  /// The parameter `minPrice` of this provider.
+  double? get minPrice;
+
+  /// The parameter `maxPrice` of this provider.
+  double? get maxPrice;
+
+  /// The parameter `minStock` of this provider.
+  int? get minStock;
+
+  /// The parameter `maxStock` of this provider.
+  int? get maxStock;
 }
 
 class _ProductsListProviderElement
@@ -199,9 +353,46 @@ class _ProductsListProviderElement
   @override
   int get page => (origin as ProductsListProvider).page;
   @override
+  int get limit => (origin as ProductsListProvider).limit;
+  @override
+  String? get search => (origin as ProductsListProvider).search;
+  @override
   String? get status => (origin as ProductsListProvider).status;
+  @override
+  int? get categoryId => (origin as ProductsListProvider).categoryId;
+  @override
+  String? get stockFilter => (origin as ProductsListProvider).stockFilter;
+  @override
+  String get sortBy => (origin as ProductsListProvider).sortBy;
+  @override
+  bool get discountOnly => (origin as ProductsListProvider).discountOnly;
+  @override
+  double? get minPrice => (origin as ProductsListProvider).minPrice;
+  @override
+  double? get maxPrice => (origin as ProductsListProvider).maxPrice;
+  @override
+  int? get minStock => (origin as ProductsListProvider).minStock;
+  @override
+  int? get maxStock => (origin as ProductsListProvider).maxStock;
 }
 
+String _$inactiveCountHash() => r'b9c96441230e735eff44e68fb20165b4a2a7a253';
+
+/// See also [inactiveCount].
+@ProviderFor(inactiveCount)
+final inactiveCountProvider = AutoDisposeFutureProvider<int>.internal(
+  inactiveCount,
+  name: r'inactiveCountProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$inactiveCountHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef InactiveCountRef = AutoDisposeFutureProviderRef<int>;
 String _$productDetailHash() => r'620b9781155e38f1d5d02fd0e0bf19170e3a3b39';
 
 /// See also [productDetail].

@@ -13,9 +13,32 @@ class ProductsRepository implements IProductsRepository {
   @override
   Future<PaginatedResponse<Product>> getProducts({
     int page = 1,
+    int limit = 20,
+    String? search,
     String? status,
+    int? categoryId,
+    String? stockFilter,
+    String sortBy = 'recent',
+    bool discountOnly = false,
+    double? minPrice,
+    double? maxPrice,
+    int? minStock,
+    int? maxStock,
   }) async {
-    final data = await _remote.getProducts(page: page, status: status);
+    final data = await _remote.getProducts(
+      page: page,
+      limit: limit,
+      search: search,
+      status: status,
+      categoryId: categoryId,
+      stockFilter: stockFilter,
+      sortBy: sortBy,
+      discountOnly: discountOnly,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      minStock: minStock,
+      maxStock: maxStock,
+    );
     return parseJson(
       'PaginatedResponse<Product>',
       data,

@@ -21,11 +21,40 @@ IProductsRepository productsRepository(Ref ref) =>
 Future<PaginatedResponse<Product>> productsList(
   Ref ref, {
   int page = 1,
+  int limit = 20,
+  String? search,
   String? status,
+  int? categoryId,
+  String? stockFilter,
+  String sortBy = 'recent',
+  bool discountOnly = false,
+  double? minPrice,
+  double? maxPrice,
+  int? minStock,
+  int? maxStock,
 }) =>
-    ref
-        .read(productsRepositoryProvider)
-        .getProducts(page: page, status: status);
+    ref.read(productsRepositoryProvider).getProducts(
+          page: page,
+          limit: limit,
+          search: search,
+          status: status,
+          categoryId: categoryId,
+          stockFilter: stockFilter,
+          sortBy: sortBy,
+          discountOnly: discountOnly,
+          minPrice: minPrice,
+          maxPrice: maxPrice,
+          minStock: minStock,
+          maxStock: maxStock,
+        );
+
+@riverpod
+Future<int> inactiveCount(Ref ref) async {
+  final res = await ref
+      .read(productsRepositoryProvider)
+      .getProducts(status: 'inactive', limit: 1);
+  return res.total;
+}
 
 @riverpod
 Future<Product> productDetail(Ref ref, int id) =>
