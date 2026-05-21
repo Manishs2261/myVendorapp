@@ -20,6 +20,26 @@ class ShopRemoteSource {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getShopReviews({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    int? rating,
+    String sort = 'latest',
+  }) async {
+    final response = await _dio.get(
+      '/vendor/shop-reviews',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (rating != null) 'rating': rating,
+        'sort': sort,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<String> uploadLogo(XFile file) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(
