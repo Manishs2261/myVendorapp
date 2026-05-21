@@ -78,6 +78,31 @@ class ShopRemoteSource {
     return urls.map((e) => e.toString()).toList();
   }
 
+  Future<Map<String, dynamic>> getProductReviewStats() async {
+    final response = await _dio.get('/vendor/reviews/stats');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getProductReviews({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    int? rating,
+    String sort = 'latest',
+  }) async {
+    final response = await _dio.get(
+      '/vendor/reviews',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (rating != null) 'rating': rating,
+        'sort': sort,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<void> removeGalleryImage(String url) async {
     await _dio.delete('/vendor/shop/gallery', data: {'url': url});
   }
