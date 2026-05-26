@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/services/fcm_service.dart';
 import '../../data/auth_remote_source.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_models.dart';
@@ -20,12 +21,23 @@ IAuthRepository authRepository(Ref ref) => AuthRepository(
 
 @Riverpod(keepAlive: true)
 class AuthNotifier extends _$AuthNotifier {
+  Future<void> _saveFcmTokenSilently() async {
+    try {
+      final token = await FcmService.requestPermissionAndGetToken();
+      if (token != null) {
+        await ref.read(authRemoteSourceProvider).saveFcmToken(token);
+      }
+    } catch (_) {}
+  }
+
   @override
   Future<VendorUser?> build() async {
     final token = await ref.read(authRepositoryProvider).getStoredToken();
     if (token == null) return null;
     try {
-      return await ref.read(authRepositoryProvider).getMe();
+      final user = await ref.read(authRepositoryProvider).getMe();
+      _saveFcmTokenSilently();
+      return user;
     } catch (_) {
       await ref.read(authRepositoryProvider).logout();
       return null;
@@ -38,7 +50,9 @@ class AuthNotifier extends _$AuthNotifier {
       await ref
           .read(authRepositoryProvider)
           .login(LoginRequest(email: email, password: password));
-      return ref.read(authRepositoryProvider).getMe();
+      final user = await ref.read(authRepositoryProvider).getMe();
+      _saveFcmTokenSilently();
+      return user;
     });
   }
 
@@ -58,7 +72,9 @@ class AuthNotifier extends _$AuthNotifier {
               phone: phone,
             ),
           );
-      return ref.read(authRepositoryProvider).getMe();
+      final user = await ref.read(authRepositoryProvider).getMe();
+      _saveFcmTokenSilently();
+      return user;
     });
   }
 

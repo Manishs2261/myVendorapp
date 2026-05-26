@@ -30,4 +30,15 @@ class AuthRemoteSource {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<void> saveFcmToken(String token, {String deviceType = 'mobile', String platform = 'android'}) async {
+    try {
+      await _dio.post(
+        '/auth/fcm-token',
+        data: {'token': token, 'device_type': deviceType, 'platform': platform},
+      );
+    } catch (_) {
+      // Non-fatal — swallow silently
+    }
+  }
 }
