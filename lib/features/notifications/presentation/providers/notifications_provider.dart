@@ -42,3 +42,10 @@ final notificationsNotifierProvider =
     AsyncNotifierProvider<NotificationsNotifier, List<NotificationModel>>(
   NotificationsNotifier.new,
 );
+
+final unreadCountProvider = Provider<int>((ref) {
+  return ref.watch(notificationsNotifierProvider).maybeWhen(
+    data: (items) => items.where((n) => !n.isRead).length,
+    orElse: () => 0,
+  );
+});

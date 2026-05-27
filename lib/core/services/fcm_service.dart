@@ -12,6 +12,9 @@ class FcmService {
   static final _messaging = FirebaseMessaging.instance;
   static final _localNotifications = FlutterLocalNotificationsPlugin();
 
+  static VoidCallback? onNewMessage;
+  static VoidCallback? onNotificationTap;
+
   static const _channel = AndroidNotificationChannel(
     'high_importance_channel',
     'High Importance Notifications',
@@ -55,10 +58,11 @@ class FcmService {
           ),
         );
       }
+      onNewMessage?.call();
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      debugPrint('FCM notification tapped — data: ${message.data}');
+      onNotificationTap?.call();
     });
   }
 

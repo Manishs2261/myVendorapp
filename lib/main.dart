@@ -1,10 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
+import 'core/router/route_names.dart';
 import 'core/services/fcm_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_logger.dart';
+import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -15,11 +18,46 @@ void main() async {
   runApp(const ProviderScope(child: LuminaVendorApp()));
 }
 
-class LuminaVendorApp extends ConsumerWidget {
+class LuminaVendorApp extends ConsumerStatefulWidget {
   const LuminaVendorApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LuminaVendorApp> createState() => _LuminaVendorAppState();
+}
+
+class _LuminaVendorAppState extends ConsumerState<LuminaVendorApp> {
+  @override
+  void initState() {
+    super.initState();
+    FcmService.onNewMessage = _onNewMessage;
+    FcmService.onNotificationTap = _onNotificationTap;
+    // Handle notification tap when app was terminated
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(appRouterProvider).go(RouteNames.notifications);
+        });
+      }
+    });
+  }
+
+  void _onNewMessage() {
+    ref.invalidate(notificationsNotifierProvider);
+  }
+
+  void _onNotificationTap() {
+    ref.read(appRouterProvider).go(RouteNames.notifications);
+  }
+
+  @override
+  void dispose() {
+    FcmService.onNewMessage = null;
+    FcmService.onNotificationTap = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Lumina Vendor',

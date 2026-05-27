@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/notifications/presentation/providers/notifications_provider.dart';
 import '../router/route_names.dart';
 import 'app_drawer.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends ConsumerWidget {
   static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
   final Widget child;
@@ -13,6 +15,7 @@ class MainShell extends StatelessWidget {
     (path: RouteNames.dashboard, label: 'Dashboard', icon: Icons.dashboard_outlined),
     (path: RouteNames.products, label: 'Products', icon: Icons.inventory_2_outlined),
     (path: RouteNames.shop, label: 'Shop', icon: Icons.store_outlined),
+    (path: RouteNames.notifications, label: 'Alerts', icon: Icons.notifications_outlined),
     (path: RouteNames.profile, label: 'Profile', icon: Icons.person_outline),
   ];
 
@@ -24,10 +27,11 @@ class MainShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _currentIndex(location);
     final colorScheme = Theme.of(context).colorScheme;
+    final unreadCount = ref.watch(unreadCountProvider);
 
     return Scaffold(
       key: MainShell.scaffoldKey,
@@ -42,6 +46,7 @@ class MainShell extends StatelessWidget {
               selected: currentIndex == e.key,
               onTap: () => context.go(_tabs[e.key].path),
               selectedColor: colorScheme.primary,
+              badgeCount: e.value.path == RouteNames.notifications ? unreadCount : 0,
             ),
           ).toList(),
         ),
@@ -56,6 +61,7 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color selectedColor;
+  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -63,6 +69,7 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.selectedColor,
+    this.badgeCount = 0,
   });
 
   @override
@@ -77,7 +84,11 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color),
+              Badge(
+                isLabelVisible: badgeCount > 0,
+                label: Text(badgeCount > 99 ? '99+' : '$badgeCount'),
+                child: Icon(icon, color: color),
+              ),
               const SizedBox(height: 2),
               Text(
                 label,
