@@ -11,7 +11,10 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../data/products_repository.dart';
 import '../../domain/product_models.dart';
+import '../providers/ai_image_provider.dart';
 import '../providers/products_provider.dart';
+import '../widgets/image_processing_dialog.dart';
+import '../../../../core/router/route_names.dart';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -143,14 +146,40 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _pickImages() async {
-    final picked = await _picker.pickMultiImage(imageQuality: 85);
+    final picked = await _picker.pickMultiImage();
     if (picked.isEmpty) return;
-    setState(() {
-      final combined = [..._selectedImages, ...picked];
-      _selectedImages
-        ..clear()
-        ..addAll(combined.take(10));
-    });
+    await _processPickedImages(picked);
+  }
+
+  Future<void> _processPickedImages(List<XFile> picked) async {
+    for (final raw in picked) {
+      if (_selectedImages.length >= 10) break;
+      if (!mounted) break;
+
+      final choice = await showDialog<ImageProcessingChoice>(
+        context: context,
+        builder: (_) => const ImageProcessingDialog(),
+      );
+      if (choice == null) continue;
+      if (!mounted) break;
+
+      XFile? finalImage;
+      if (choice == ImageProcessingChoice.removeBackground) {
+        // Reset notifier so AiPreviewScreen starts fresh each time.
+        ref.read(aiImageNotifierProvider.notifier).reset();
+        if (!mounted) break;
+        finalImage = await context.push<XFile>(RouteNames.aiPreview, extra: raw);
+      } else if (choice == ImageProcessingChoice.crop) {
+        finalImage = await context.push<XFile>(RouteNames.cropEditor, extra: raw);
+      } else {
+        finalImage =
+            await ref.read(aiImageServiceProvider).compressFinalImage(raw);
+      }
+
+      if (finalImage != null && mounted) {
+        setState(() => _selectedImages.add(finalImage!));
+      }
+    }
   }
 
   void _removeImage(int index) =>

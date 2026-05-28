@@ -30,6 +30,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
         <!-- Google Maps API Key — replace YOUR_MAPS_API_KEY with a real key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"

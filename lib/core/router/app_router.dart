@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -26,6 +27,8 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/shop/presentation/screens/shop_profile_screen.dart';
 import '../../features/shop/presentation/screens/shop_reviews_screen.dart';
 import '../../features/shop/presentation/screens/storefront_editor_screen.dart';
+import '../../features/products/presentation/screens/ai_preview_screen.dart';
+import '../../features/products/presentation/screens/crop_editor_screen.dart';
 import '../../features/sponsorship/presentation/screens/sponsorship_screen.dart';
 import '../widgets/main_shell.dart';
 import 'route_names.dart';
@@ -93,6 +96,16 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RouteNames.register,
         builder: (_, _) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.aiPreview,
+        builder: (_, state) =>
+            AiPreviewScreen(initialFile: state.extra as XFile),
+      ),
+      GoRoute(
+        path: RouteNames.cropEditor,
+        builder: (_, state) =>
+            CropEditorScreen(imageFile: state.extra as XFile),
       ),
       ShellRoute(
         builder: (_, _, child) => MainShell(child: child),
