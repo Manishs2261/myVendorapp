@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/cache/cache_keys.dart';
+import '../../../../core/providers/cache_providers.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../data/shop_remote_source.dart';
 import '../../data/shop_repository.dart';
@@ -18,17 +20,67 @@ ShopRemoteSource shopRemoteSource(Ref ref) =>
 IShopRepository shopRepository(Ref ref) =>
     ShopRepository(ref.read(shopRemoteSourceProvider));
 
-@riverpod
+@Riverpod(keepAlive: true)
 class ShopNotifier extends _$ShopNotifier {
+  static const _ttl = Duration(minutes: 30);
+
   @override
-  Future<Shop> build() =>
-      ref.read(shopRepositoryProvider).getShop();
+  Future<Shop> build() async {
+    final cache = ref.read(cacheServiceProvider);
+
+    final cached = cache.get<Shop>(
+      CacheKeys.shopProfile,
+      fromJson: Shop.fromJson,
+      maxAge: _ttl,
+    );
+    if (cached != null) {
+      Future.microtask(_backgroundRefresh);
+      return cached;
+    }
+
+    final stale = cache.getIgnoringTtl<Shop>(
+      CacheKeys.shopProfile,
+      fromJson: Shop.fromJson,
+    );
+    if (stale != null) {
+      Future.microtask(_backgroundRefresh);
+      return stale;
+    }
+
+    return _fetchAndCache();
+  }
+
+  Future<void> _backgroundRefresh() async {
+    try {
+      final fresh = await _fetchAndCache();
+      state = AsyncValue.data(fresh);
+    } catch (_) {}
+  }
+
+  Future<Shop> _fetchAndCache() async {
+    final data = await ref.read(shopRepositoryProvider).getShop();
+    await ref.read(cacheServiceProvider).put(
+          CacheKeys.shopProfile,
+          data,
+          toJson: (d) => d.toJson(),
+        );
+    return data;
+  }
+
+  DateTime? get lastUpdated =>
+      ref.read(cacheServiceProvider).getLastUpdated(CacheKeys.shopProfile);
 
   Future<void> save(Map<String, dynamic> data) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(shopRepositoryProvider).updateShop(data),
-    );
+    state = await AsyncValue.guard(() async {
+      final updated = await ref.read(shopRepositoryProvider).updateShop(data);
+      await ref.read(cacheServiceProvider).put(
+            CacheKeys.shopProfile,
+            updated,
+            toJson: (d) => d.toJson(),
+          );
+      return updated;
+    });
   }
 
   Future<void> uploadLogo(XFile file) async {

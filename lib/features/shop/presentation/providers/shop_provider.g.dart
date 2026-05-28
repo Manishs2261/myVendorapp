@@ -58,21 +58,20 @@ final shopReviewStatsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ShopReviewStatsRef = AutoDisposeFutureProviderRef<ShopReviewStats>;
-String _$shopNotifierHash() => r'f8c699a93aab88cdcbab5014dcbd15e4db05a624';
+String _$shopNotifierHash() => r'2dbc69cca7dba19d294c4750526605a297bea0f0';
 
 /// See also [ShopNotifier].
 @ProviderFor(ShopNotifier)
-final shopNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<ShopNotifier, Shop>.internal(
-      ShopNotifier.new,
-      name: r'shopNotifierProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$shopNotifierHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final shopNotifierProvider = AsyncNotifierProvider<ShopNotifier, Shop>.internal(
+  ShopNotifier.new,
+  name: r'shopNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$shopNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-typedef _$ShopNotifier = AutoDisposeAsyncNotifier<Shop>;
+typedef _$ShopNotifier = AsyncNotifier<Shop>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -26,4 +26,11 @@ class PaginatedResponse<T> {
       limit: json['limit'] as int? ?? 20,
     );
   }
+
+  Map<String, dynamic> toJson(Map<String, dynamic> Function(T) itemToJson) => {
+        'data': data.map(itemToJson).toList(),
+        'total': total,
+        'page': page,
+        'limit': limit,
+      };
 }

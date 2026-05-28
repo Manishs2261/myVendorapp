@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
+import '../../../../shared/widgets/last_updated_chip.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../providers/orders_provider.dart';
 
@@ -12,18 +14,27 @@ class OrdersListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ordersAsync = ref.watch(ordersListProvider());
+    final ordersAsync = ref.watch(ordersNotifierProvider);
+    final notifier = ref.read(ordersNotifierProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+      appBar: AppBar(
+        title: const Text('Orders'),
+        actions: [
+          LastUpdatedChip(
+            lastUpdated: notifier.lastUpdated,
+            isRefreshing: ordersAsync.isLoading,
+          ),
+        ],
+      ),
       body: ordersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ShimmerList(count: 7, itemHeight: 72),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => ref.invalidate(ordersListProvider()),
+          onRetry: () => notifier.refresh(),
         ),
         data: (page) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(ordersListProvider()),
+          onRefresh: () => notifier.refresh(),
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: page.data.length,

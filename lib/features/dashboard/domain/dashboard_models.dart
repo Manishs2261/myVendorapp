@@ -32,6 +32,16 @@ class RecentProduct {
           [],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        if (categoryName != null) 'category_name': categoryName,
+        'price': price,
+        'status': status,
+        'click_count': clickCount,
+        'images': imageUrls.map((u) => {'url': u}).toList(),
+      };
 }
 
 class DashboardOverview {
@@ -70,4 +80,15 @@ class DashboardOverview {
           [],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'total_revenue': totalRevenue,
+        'total_orders': totalOrders,
+        'total_products': totalProducts,
+        'pending_orders': pendingOrders,
+        'active_products': activeProducts,
+        'inactive_products': inactiveProducts,
+        'total_views': totalViews,
+        'recent_products': recentProducts.map((p) => p.toJson()).toList(),
+      };
 }

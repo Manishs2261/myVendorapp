@@ -43,12 +43,12 @@ final profileRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ProfileRepositoryRef = AutoDisposeProviderRef<IProfileRepository>;
-String _$profileNotifierHash() => r'a669e069ff293445ead4ae660338f19b224c0d39';
+String _$profileNotifierHash() => r'16499913b3ad3f48b8a1e28d64a8ee894dc77138';
 
 /// See also [ProfileNotifier].
 @ProviderFor(ProfileNotifier)
 final profileNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<ProfileNotifier, VendorProfile>.internal(
+    AsyncNotifierProvider<ProfileNotifier, VendorProfile>.internal(
       ProfileNotifier.new,
       name: r'profileNotifierProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -58,6 +58,6 @@ final profileNotifierProvider =
       allTransitiveDependencies: null,
     );
 
-typedef _$ProfileNotifier = AutoDisposeAsyncNotifier<VendorProfile>;
+typedef _$ProfileNotifier = AsyncNotifier<VendorProfile>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

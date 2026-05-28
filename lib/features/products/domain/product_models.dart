@@ -22,6 +22,14 @@ class Category {
         imageUrl: json['image_url'] as String?,
         sortOrder: json['sort_order'] as int? ?? 0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        if (parentId != null) 'parent_id': parentId,
+        if (imageUrl != null) 'image_url': imageUrl,
+        'sort_order': sortOrder,
+      };
 }
 
 class Product {
@@ -125,6 +133,35 @@ class Product {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'price': price,
+        if (originalPrice != null) 'original_price': originalPrice,
+        if (discountPercentage != null) 'discount_percentage': discountPercentage,
+        'stock': stock,
+        'status': status.name,
+        'images': imageUrls,
+        if (categoryId != null) 'category_id': categoryId,
+        if (category != null) 'category': category,
+        if (brand != null) 'brand': brand,
+        if (unit != null) 'unit': unit,
+        'tags': tags,
+        'specifications': specifications,
+        'color_variations': colorVariations,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        'view_count': viewCount,
+        'is_sponsored': isSponsored,
+        'sponsor_request_status': sponsorStatus,
+        'is_featured': isFeatured,
+        'rating': rating,
+        'review_count': reviewCount,
+        if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+        if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      };
 }
 
 class ProductForm {

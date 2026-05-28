@@ -23,6 +23,13 @@ class OrderItem {
       unitPrice: (json['unit_price'] as num).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'product_name': productName,
+        'quantity': quantity,
+        'unit_price': unitPrice,
+      };
 }
 
 class Order {
@@ -61,4 +68,14 @@ class Order {
       customerName: json['customer_name'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'order_number': orderNumber,
+        'status': status.name,
+        'total': total,
+        'items': items.map((i) => i.toJson()).toList(),
+        'created_at': createdAt.toIso8601String(),
+        'customer_name': customerName,
+      };
 }

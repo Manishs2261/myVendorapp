@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/cache/cache_keys.dart';
+import '../../../../core/providers/cache_providers.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../../../shared/models/paginated_response.dart';
 import '../../data/products_remote_source.dart';
@@ -17,36 +19,67 @@ ProductsRemoteSource productsRemoteSource(Ref ref) =>
 IProductsRepository productsRepository(Ref ref) =>
     ProductsRepository(ref.read(productsRemoteSourceProvider));
 
-@riverpod
-Future<PaginatedResponse<Product>> productsList(
-  Ref ref, {
-  int page = 1,
-  int limit = 20,
-  String? search,
-  String? status,
-  int? categoryId,
-  String? stockFilter,
-  String sortBy = 'recent',
-  bool discountOnly = false,
-  double? minPrice,
-  double? maxPrice,
-  int? minStock,
-  int? maxStock,
-}) =>
-    ref.read(productsRepositoryProvider).getProducts(
-          page: page,
-          limit: limit,
-          search: search,
-          status: status,
-          categoryId: categoryId,
-          stockFilter: stockFilter,
-          sortBy: sortBy,
-          discountOnly: discountOnly,
-          minPrice: minPrice,
-          maxPrice: maxPrice,
-          minStock: minStock,
-          maxStock: maxStock,
+/// Cached first-page products (default sort, no filters).
+/// Pages 2+ and filtered views fetch directly from the repository.
+@Riverpod(keepAlive: true)
+class ProductsNotifier extends _$ProductsNotifier {
+  static const _ttl = Duration(minutes: 10);
+
+  @override
+  Future<PaginatedResponse<Product>> build() async {
+    final cache = ref.read(cacheServiceProvider);
+
+    final cached = cache.get<PaginatedResponse<Product>>(
+      CacheKeys.productsPage1,
+      fromJson: (j) =>
+          PaginatedResponse.fromJson(j, Product.fromJson),
+      maxAge: _ttl,
+    );
+
+    if (cached != null) {
+      Future.microtask(_backgroundRefresh);
+      return cached;
+    }
+
+    final stale = cache.getIgnoringTtl<PaginatedResponse<Product>>(
+      CacheKeys.productsPage1,
+      fromJson: (j) => PaginatedResponse.fromJson(j, Product.fromJson),
+    );
+    if (stale != null) {
+      Future.microtask(_backgroundRefresh);
+      return stale;
+    }
+
+    return _fetchAndCache();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_fetchAndCache);
+  }
+
+  DateTime? get lastUpdated =>
+      ref.read(cacheServiceProvider).getLastUpdated(CacheKeys.productsPage1);
+
+  Future<void> _backgroundRefresh() async {
+    try {
+      final fresh = await _fetchAndCache();
+      state = AsyncValue.data(fresh);
+    } catch (_) {}
+  }
+
+  Future<PaginatedResponse<Product>> _fetchAndCache() async {
+    final data = await ref
+        .read(productsRepositoryProvider)
+        .getProducts(page: 1, limit: 20);
+    await ref.read(cacheServiceProvider).put(
+          CacheKeys.productsPage1,
+          data,
+          toJson: (d) => d.toJson((p) => p.toJson()),
         );
+    return data;
+  }
+}
 
 @riverpod
 Future<int> inactiveCount(Ref ref) async {
@@ -60,6 +93,53 @@ Future<int> inactiveCount(Ref ref) async {
 Future<Product> productDetail(Ref ref, int id) =>
     ref.read(productsRepositoryProvider).getProduct(id);
 
-// Manual provider — no code generation needed
-final categoriesProvider = FutureProvider<List<Category>>((ref) =>
-    ref.read(productsRepositoryProvider).getCategories());
+/// Categories cached for 2 hours — rarely changes.
+@Riverpod(keepAlive: true)
+class CategoriesNotifier extends _$CategoriesNotifier {
+  static const _ttl = Duration(hours: 2);
+
+  @override
+  Future<List<Category>> build() async {
+    final cache = ref.read(cacheServiceProvider);
+
+    final cached = cache.get<List<Category>>(
+      CacheKeys.categories,
+      fromJson: (j) => (j['items'] as List)
+          .map((e) => Category.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      maxAge: _ttl,
+    );
+
+    if (cached != null) {
+      Future.microtask(_backgroundRefresh);
+      return cached;
+    }
+
+    return _fetchAndCache();
+  }
+
+  Future<void> _backgroundRefresh() async {
+    try {
+      final fresh = await _fetchAndCache();
+      state = AsyncValue.data(fresh);
+    } catch (_) {}
+  }
+
+  Future<List<Category>> _fetchAndCache() async {
+    final data =
+        await ref.read(productsRepositoryProvider).getCategories();
+    await ref.read(cacheServiceProvider).put(
+          CacheKeys.categories,
+          data,
+          toJson: (list) => {
+            'items': list.map((c) => c.toJson()).toList(),
+          },
+        );
+    return data;
+  }
+}
+
+// Keep the old manual provider as an alias for backwards compat with existing
+// widgets that already watch categoriesProvider.
+final categoriesProvider = FutureProvider<List<Category>>(
+    (ref) => ref.watch(categoriesNotifierProvider.future));

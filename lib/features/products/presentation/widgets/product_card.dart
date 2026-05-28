@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -122,10 +123,11 @@ class _ProductThumb extends StatelessWidget {
         width: 72,
         height: 72,
         child: imageUrl != null
-            ? Image.network(
-                imageUrl!,
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _placeholder(),
+                placeholder: (_, _) => _placeholder(),
+                errorWidget: (_, _, _) => _placeholder(),
               )
             : _placeholder(),
       ),

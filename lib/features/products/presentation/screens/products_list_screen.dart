@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/cache/cache_keys.dart';
+import '../../../../core/providers/cache_providers.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/main_shell.dart';
+import '../../../../shared/models/paginated_response.dart';
 import '../../../../shared/widgets/error_view.dart';
+import '../../../../shared/widgets/last_updated_chip.dart';
+import '../../../../shared/widgets/offline_banner.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../domain/product_models.dart';
 import '../providers/products_provider.dart';
 import '../widgets/product_card.dart';
@@ -91,8 +97,26 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
+
+    // Show cached page-1 data immediately while fetching fresh data
+    final cache = ref.read(cacheServiceProvider);
+    final cached = cache.getIgnoringTtl<PaginatedResponse<Product>>(
+      CacheKeys.productsPage1,
+      fromJson: (j) => PaginatedResponse.fromJson(j, Product.fromJson),
+    );
+    if (cached != null) {
+      _products.addAll(cached.data);
+      _total = cached.total;
+      _hasNextPage = cached.hasNextPage;
+      _page = cached.page;
+      _initialLoading = false;
+    }
+
     _loadPage(1);
   }
+
+  DateTime? get _lastUpdated =>
+      ref.read(cacheServiceProvider).getLastUpdated(CacheKeys.productsPage1);
 
   @override
   void dispose() {
@@ -213,6 +237,10 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
         ),
         title: const Text('Products'),
         actions: [
+          LastUpdatedChip(
+            lastUpdated: _lastUpdated,
+            isRefreshing: _initialLoading && _products.isEmpty,
+          ),
           IconButton(
             icon: Badge(
               isLabelVisible: _minPrice != null ||
@@ -234,6 +262,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const OfflineBanner(),
           // Stats row
           _StatsRow(total: _total, inactiveAsync: inactiveAsync),
 
@@ -304,8 +333,8 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
   }
 
   Widget _buildList() {
-    if (_initialLoading) {
-      return const Center(child: CircularProgressIndicator());
+    if (_initialLoading && _products.isEmpty) {
+      return const ShimmerList(count: 8, itemHeight: 80);
     }
 
     if (_error != null && _products.isEmpty) {
@@ -320,7 +349,10 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => _loadPage(1),
+      onRefresh: () async {
+        await ref.read(cacheServiceProvider).invalidate(CacheKeys.productsPage1);
+        return _loadPage(1);
+      },
       child: ListView.builder(
         controller: _scrollCtrl,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),

@@ -92,6 +92,35 @@ class Shop {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'business_name': businessName,
+        if (shopName != null) 'name': shopName,
+        if (description != null) 'description': description,
+        if (logoUrl != null) 'logo_url': logoUrl,
+        if (bannerUrl != null) 'banner_url': bannerUrl,
+        if (address != null) 'address': address,
+        if (city != null) 'city': city,
+        if (state != null) 'state': state,
+        if (pincode != null) 'postal_code': pincode,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (contactPhone != null) 'contact_phone': contactPhone,
+        if (contactEmail != null) 'contact_email': contactEmail,
+        if (whatsappNumber != null) 'whatsapp_number': whatsappNumber,
+        if (businessType != null) 'business_type': businessType,
+        if (gstNumber != null) 'gst_number': gstNumber,
+        if (idType != null) 'id_type': idType,
+        if (idDocumentUrl != null) 'id_document_url': idDocumentUrl,
+        'gallery': gallery,
+        'status': status,
+        'verified': verified,
+        'completion_score': completionScore,
+        if (openingTime != null) 'opening_time': openingTime,
+        if (closingTime != null) 'closing_time': closingTime,
+        'working_days': workingDays,
+      };
+
   Shop copyWith({
     String? logoUrl,
     String? bannerUrl,

@@ -329,7 +329,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
       if (mounted) {
         _showSnack(_isEditing ? 'Product updated!' : 'Product added successfully');
-        ref.invalidate(productsListProvider);
+        ref.invalidate(productsNotifierProvider);
         context.pop();
       }
     } catch (e) {

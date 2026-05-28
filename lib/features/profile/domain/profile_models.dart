@@ -31,4 +31,15 @@ class VendorProfile {
       isPhoneVerified: json['is_phone_verified'] as bool? ?? false,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'business_name': businessName,
+        'business_email': email,
+        'business_phone': phone,
+        if (logoUrl != null) 'logo_url': logoUrl,
+        if (gstNumber != null) 'gst_number': gstNumber,
+        'is_email_verified': isEmailVerified,
+        'is_phone_verified': isPhoneVerified,
+      };
 }

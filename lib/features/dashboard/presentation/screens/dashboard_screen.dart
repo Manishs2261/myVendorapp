@@ -1,8 +1,11 @@
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
+import '../../../../shared/widgets/last_updated_chip.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../domain/shop_analytics_models.dart';
 import '../providers/shop_analytics_provider.dart';
 
@@ -13,8 +16,9 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final analyticsAsync = ref.watch(shopAnalyticsProvider);
+    final analyticsAsync = ref.watch(shopAnalyticsNotifierProvider);
     final period = ref.watch(shopAnalyticsPeriodProvider);
+    final notifier = ref.read(shopAnalyticsNotifierProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -24,63 +28,76 @@ class DashboardScreen extends ConsumerWidget {
         ),
         title: const Text('Dashboard'),
         actions: [
+          LastUpdatedChip(
+            lastUpdated: notifier.lastUpdated,
+            isRefreshing: analyticsAsync.isLoading,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
-            onPressed: () => ref.invalidate(shopAnalyticsProvider),
+            onPressed: () => notifier.refresh(),
           ),
         ],
       ),
       body: analyticsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: const [
+            ShimmerMetricsGrid(),
+            SizedBox(height: 16),
+            ShimmerCard(height: 200),
+            SizedBox(height: 16),
+            ShimmerCard(height: 160),
+          ],
+        ),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => ref.invalidate(shopAnalyticsProvider),
+          onRetry: () => notifier.refresh(),
         ),
         data: (analytics) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(shopAnalyticsProvider),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              // Sponsored banner
-              if (analytics.sponsored != null) ...[
-                _SponsoredBanner(info: analytics.sponsored!),
-                const SizedBox(height: 16),
-              ],
+          onRefresh: () => notifier.refresh(),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  children: [
+                    // Sponsored banner
+                    if (analytics.sponsored != null) ...[
+                      _SponsoredBanner(info: analytics.sponsored!),
+                      const SizedBox(height: 16),
+                    ],
 
-              // Analytics header + period picker
-              _AnalyticsHeader(
-                metrics: analytics.metrics,
-                period: period,
-                onPeriodChanged: (p) =>
-                    ref.read(shopAnalyticsPeriodProvider.notifier).state = p,
+                    // Analytics header + period picker
+                    _AnalyticsHeader(
+                      metrics: analytics.metrics,
+                      period: period,
+                      onPeriodChanged: (p) =>
+                          ref.read(shopAnalyticsPeriodProvider.notifier).state = p,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 7 metric cards
+                    _MetricsGrid(metrics: analytics.metrics),
+                    const SizedBox(height: 16),
+
+                    // Daily Traffic
+                    _DailyTrafficCard(points: analytics.dailyTraffic),
+                    const SizedBox(height: 16),
+
+                    // Product Performance
+                    _ProductPerformanceCard(products: analytics.productPerformance),
+                    const SizedBox(height: 16),
+
+                    // Customer Actions
+                    _CustomerActionsCard(actions: analytics.customerActions),
+                    const SizedBox(height: 16),
+
+                    _SearchKeywordsCard(keywords: analytics.searchKeywords),
+                    const SizedBox(height: 16),
+
+                    // Smart Insights
+                    _SmartInsightsCard(insights: analytics.insights),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-
-              // 7 metric cards
-              _MetricsGrid(metrics: analytics.metrics),
-              const SizedBox(height: 16),
-
-              // Daily Traffic
-              _DailyTrafficCard(points: analytics.dailyTraffic),
-              const SizedBox(height: 16),
-
-              // Product Performance
-              _ProductPerformanceCard(products: analytics.productPerformance),
-              const SizedBox(height: 16),
-
-              // Bottom row: Customer Actions + Search Keywords
-              _CustomerActionsCard(actions: analytics.customerActions),
-              const SizedBox(height: 16),
-
-              _SearchKeywordsCard(keywords: analytics.searchKeywords),
-              const SizedBox(height: 16),
-
-              // Smart Insights
-              _SmartInsightsCard(insights: analytics.insights),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
@@ -639,13 +656,13 @@ class _ProductRow extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: product.image != null
-                      ? Image.network(
-                          product.image!,
+                      ? CachedNetworkImage(
+                          imageUrl: product.image!,
                           width: 28,
                           height: 28,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              _ProductThumb(),
+                          placeholder: (_, _) => _ProductThumb(),
+                          errorWidget: (_, _, _) => _ProductThumb(),
                         )
                       : _ProductThumb(),
                 ),

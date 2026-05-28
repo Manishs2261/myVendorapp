@@ -27,6 +27,16 @@ class NotificationModel {
         data: (json['data'] as Map?)?.cast<String, String>(),
       );
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'type': type,
+        'is_read': isRead,
+        'created_at': createdAt.toIso8601String(),
+        if (data != null) 'data': data,
+      };
+
   NotificationModel copyWith({bool? isRead}) => NotificationModel(
         id: id,
         title: title,

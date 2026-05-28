@@ -52,6 +52,22 @@ class SponsoredInfo {
       daysLeft: daysLeft,
     );
   }
+
+  factory SponsoredInfo.fromJson(Map<String, dynamic> j) => SponsoredInfo(
+        active: j['active'] as bool? ?? false,
+        views: j['views'] as int? ?? 0,
+        clicks: j['clicks'] as int? ?? 0,
+        ctr: (j['ctr'] as num?)?.toDouble() ?? 0.0,
+        daysLeft: j['days_left'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'active': active,
+        'views': views,
+        'clicks': clicks,
+        'ctr': ctr,
+        'days_left': daysLeft,
+      };
 }
 
 class ShopMetrics {
@@ -91,6 +107,19 @@ class ShopMetrics {
         dateStart: j['start_date'] as String? ?? '',
         dateEnd: j['end_date'] as String? ?? '',
       );
+
+  Map<String, dynamic> toJson() => {
+        'total_views': productViews,
+        'total_impressions': impressions,
+        'ctr_percentage': ctr,
+        'total_call_clicks': callClicks,
+        'total_whatsapp_clicks': whatsappClicks,
+        'total_direction_clicks': directions,
+        'total_inquiries': inquiries,
+        'period': period,
+        'start_date': dateStart,
+        'end_date': dateEnd,
+      };
 }
 
 class DailyTrafficPoint {
@@ -113,6 +142,13 @@ class DailyTrafficPoint {
         actions: j['actions'] as int? ?? 0,
         searches: j['searches'] as int? ?? 0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'date': date,
+        'views': views,
+        'actions': actions,
+        'searches': searches,
+      };
 }
 
 class ProductPerformanceItem {
@@ -153,6 +189,19 @@ class ProductPerformanceItem {
         directions: j['direction_clicks'] as int? ?? 0,
         lastSeen: j['last_viewed_at'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'product_id': id,
+        'name': name,
+        if (image != null) 'image': image,
+        'views': views,
+        'impressions': impressions,
+        'ctr': ctr,
+        'call_clicks': callClicks,
+        'whatsapp_clicks': whatsappClicks,
+        'direction_clicks': directions,
+        if (lastSeen != null) 'last_viewed_at': lastSeen,
+      };
 }
 
 class CustomerActions {
@@ -186,6 +235,20 @@ class CustomerActions {
       total: total,
     );
   }
+
+  factory CustomerActions.fromJson(Map<String, dynamic> j) => CustomerActions(
+        callClicks: j['call_clicks'] as int? ?? 0,
+        directions: j['direction_clicks'] as int? ?? 0,
+        productClicks: j['product_clicks'] as int? ?? 0,
+        total: j['total'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'call_clicks': callClicks,
+        'direction_clicks': directions,
+        'product_clicks': productClicks,
+        'total': total,
+      };
 }
 
 class SearchKeywordItem {
@@ -208,6 +271,13 @@ class SearchKeywordItem {
         resultCountAvg: (j['result_count_avg'] as num?)?.toDouble() ?? 0.0,
         isNoResult: j['is_no_result'] as bool? ?? false,
       );
+
+  Map<String, dynamic> toJson() => {
+        'keyword': query,
+        'count': count,
+        'result_count_avg': resultCountAvg,
+        'is_no_result': isNoResult,
+      };
 }
 
 class SearchKeywords {
@@ -230,6 +300,12 @@ class SearchKeywords {
             .toList(),
         totalSearches: j['total_searches'] as int? ?? 0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'top_keywords': topKeywords.map((k) => k.toJson()).toList(),
+        'no_result_keywords': noResultSearches.map((k) => k.toJson()).toList(),
+        'total_searches': totalSearches,
+      };
 }
 
 class ShopInsight {
@@ -251,6 +327,13 @@ class ShopInsight {
         message: j['message'] as String? ?? '',
         isRead: j['is_read'] as bool? ?? false,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'message': message,
+        'is_read': isRead,
+      };
 }
 
 class ShopAnalytics {
@@ -271,4 +354,38 @@ class ShopAnalytics {
     required this.searchKeywords,
     required this.insights,
   });
+
+  factory ShopAnalytics.fromJson(Map<String, dynamic> j) => ShopAnalytics(
+        metrics: ShopMetrics.fromJson(j['metrics'] as Map<String, dynamic>),
+        sponsored: j['sponsored'] != null
+            ? SponsoredInfo.fromJson(
+                Map<String, dynamic>.from(j['sponsored'] as Map))
+            : null,
+        dailyTraffic: (j['daily_traffic'] as List? ?? [])
+            .map((e) =>
+                DailyTrafficPoint.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+        productPerformance: (j['product_performance'] as List? ?? [])
+            .map((e) => ProductPerformanceItem.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList(),
+        customerActions: CustomerActions.fromJson(
+            Map<String, dynamic>.from(j['customer_actions'] as Map)),
+        searchKeywords: SearchKeywords.fromJson(
+            Map<String, dynamic>.from(j['search_keywords'] as Map)),
+        insights: (j['insights'] as List? ?? [])
+            .map((e) =>
+                ShopInsight.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'metrics': metrics.toJson(),
+        'sponsored': sponsored?.toJson(),
+        'daily_traffic': dailyTraffic.map((t) => t.toJson()).toList(),
+        'product_performance': productPerformance.map((p) => p.toJson()).toList(),
+        'customer_actions': customerActions.toJson(),
+        'search_keywords': searchKeywords.toJson(),
+        'insights': insights.map((i) => i.toJson()).toList(),
+      };
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/notifications/presentation/providers/notifications_provider.dart';
+import '../../shared/widgets/offline_banner.dart';
 import '../router/route_names.dart';
 import 'app_drawer.dart';
 
@@ -36,7 +37,12 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       key: MainShell.scaffoldKey,
       drawer: const AppDrawer(),
-      body: child,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           children: _tabs.asMap().entries.map((e) =>

@@ -2,6 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'core/cache/cache_service.dart';
+import 'core/cache/offline_queue.dart';
+import 'core/providers/cache_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/router/route_names.dart';
 import 'core/services/fcm_service.dart';
@@ -13,9 +17,25 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AppLogger.initialize();
+
+  await Hive.initFlutter();
+  final cacheService = CacheService();
+  await cacheService.init();
+  final offlineQueue = OfflineQueueService();
+  await offlineQueue.init();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await FcmService.initialize();
-  runApp(const ProviderScope(child: LuminaVendorApp()));
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        cacheServiceProvider.overrideWithValue(cacheService),
+        offlineQueueProvider.overrideWithValue(offlineQueue),
+      ],
+      child: const LuminaVendorApp(),
+    ),
+  );
 }
 
 class LuminaVendorApp extends ConsumerStatefulWidget {
