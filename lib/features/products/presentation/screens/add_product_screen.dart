@@ -145,10 +145,58 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Image helpers
   // ---------------------------------------------------------------------------
 
+  Future<ImageSource?> _showSourcePicker() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded,
+                  color: AppColors.primary),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded,
+                  color: AppColors.primary),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickImages() async {
-    final picked = await _picker.pickMultiImage();
-    if (picked.isEmpty) return;
-    await _processPickedImages(picked);
+    final source = await _showSourcePicker();
+    if (source == null) return;
+
+    if (source == ImageSource.camera) {
+      final picked = await _picker.pickImage(source: ImageSource.camera);
+      if (picked == null) return;
+      await _processPickedImages([picked]);
+    } else {
+      final picked = await _picker.pickMultiImage();
+      if (picked.isEmpty) return;
+      await _processPickedImages(picked);
+    }
   }
 
   Future<void> _processPickedImages(List<XFile> picked) async {
