@@ -16,6 +16,7 @@ class ProductsRepository implements IProductsRepository {
     int limit = 20,
     String? search,
     String? status,
+    bool? isDraft,
     int? categoryId,
     String? stockFilter,
     String sortBy = 'recent',
@@ -30,6 +31,7 @@ class ProductsRepository implements IProductsRepository {
       limit: limit,
       search: search,
       status: status,
+      isDraft: isDraft,
       categoryId: categoryId,
       stockFilter: stockFilter,
       sortBy: sortBy,
@@ -83,6 +85,12 @@ class ProductsRepository implements IProductsRepository {
   @override
   Future<void> requestSponsorship(int productId) =>
       _remote.requestSponsorship(productId);
+
+  @override
+  Future<Product> publishDraft(int id) async {
+    final data = await _remote.publishDraft(id);
+    return parseJson('Product', data, Product.fromJson);
+  }
 
   @override
   Future<List<Category>> getCategories() async {

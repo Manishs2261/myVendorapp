@@ -8,10 +8,12 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (status.toLowerCase()) {
-      'approved' || 'active' || 'delivered' => ('Approved', Colors.green),
+      'approved' || 'active' || 'delivered' => ('Active', Colors.green),
       'pending' => ('Pending', Colors.orange),
       'suspended' || 'rejected' || 'cancelled' => ('Rejected', Colors.red),
       'processing' => ('Processing', Colors.blue),
+      'draft' => ('Draft', Colors.blue),
+      'outofstock' || 'out_of_stock' => ('Out of Stock', Colors.orange),
       _ => (status, Colors.grey),
     };
 

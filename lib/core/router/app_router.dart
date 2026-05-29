@@ -29,6 +29,7 @@ import '../../features/shop/presentation/screens/shop_reviews_screen.dart';
 import '../../features/shop/presentation/screens/storefront_editor_screen.dart';
 import '../../features/products/presentation/screens/ai_preview_screen.dart';
 import '../../features/products/presentation/screens/crop_editor_screen.dart';
+import '../../features/products/presentation/screens/drafts_screen.dart';
 import '../../features/sponsorship/presentation/screens/sponsorship_screen.dart';
 import '../widgets/main_shell.dart';
 import 'route_names.dart';
@@ -117,6 +118,10 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
             path: RouteNames.products,
             builder: (_, _) => const ProductsListScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.drafts,
+            builder: (_, _) => const DraftsScreen(),
           ),
           GoRoute(
             path: '/products/:id',

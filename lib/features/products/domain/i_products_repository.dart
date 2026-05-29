@@ -7,6 +7,7 @@ abstract class IProductsRepository {
     int limit = 20,
     String? search,
     String? status,
+    bool? isDraft,
     int? categoryId,
     String? stockFilter,
     String sortBy = 'recent',
@@ -22,4 +23,5 @@ abstract class IProductsRepository {
   Future<void> deleteProduct(int id);
   Future<List<Category>> getCategories();
   Future<void> requestSponsorship(int productId);
+  Future<Product> publishDraft(int id);
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -49,9 +50,30 @@ class AddProductScreen extends ConsumerStatefulWidget {
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool get _isEditing => widget.initialProduct != null;
+  bool get _isDraft => _isEditing
+      ? (widget.initialProduct?.isDraft ?? false)
+      : true;
+  int? get _effectiveDraftId =>
+      _currentDraftId ?? (_isEditing ? widget.initialProduct?.id : null);
+
+  int get _completionPct {
+    int score = 0;
+    if (_nameCtrl.text.trim().isNotEmpty) score += 20;
+    if (_priceCtrl.text.trim().isNotEmpty) score += 20;
+    if (_selectedCategoryId != null) score += 20;
+    if (_descCtrl.text.trim().isNotEmpty) score += 15;
+    if (_selectedImages.isNotEmpty || _existingImageUrls.isNotEmpty) score += 15;
+    if (_brandCtrl.text.trim().isNotEmpty) score += 5;
+    if (_tags.isNotEmpty) score += 5;
+    return score;
+  }
 
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  bool _draftSaving = false;
+  bool _hasUnsavedChanges = false;
+  int? _currentDraftId;
+  Timer? _autoSaveTimer;
 
   // Basic Info
   final _nameCtrl = TextEditingController();
@@ -90,10 +112,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _latCtrl = TextEditingController();
   final _lngCtrl = TextEditingController();
 
+  void _markDirty() {
+    if (!_hasUnsavedChanges && mounted) setState(() => _hasUnsavedChanges = true);
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.initialProduct != null) _prefillFromProduct(widget.initialProduct!);
+    for (final ctrl in [
+      _nameCtrl, _descCtrl, _brandCtrl, _mrpCtrl,
+      _priceCtrl, _discountCtrl, _stockCtrl, _latCtrl, _lngCtrl,
+    ]) {
+      ctrl.addListener(_markDirty);
+    }
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (_hasUnsavedChanges && _isDraft && _nameCtrl.text.trim().isNotEmpty) {
+        _saveDraft(silent: true);
+      }
+    });
   }
 
   void _prefillFromProduct(Product p) {
@@ -124,6 +161,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _brandCtrl.dispose();
@@ -139,6 +177,98 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       row.value.dispose();
     }
     super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Draft helpers
+  // ---------------------------------------------------------------------------
+
+  ProductForm _buildForm({bool isDraft = false}) => ProductForm(
+        isDraft: isDraft,
+        name: _nameCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+        originalPrice: double.tryParse(_mrpCtrl.text.trim()),
+        discountPercentage: int.tryParse(_discountCtrl.text.trim()),
+        stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
+        status: _status,
+        categoryId: _selectedCategoryId,
+        brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
+        unit: _selectedUnit,
+        tags: List.from(_tags),
+        specifications: {
+          for (final row in _specs)
+            if (row.key.text.trim().isNotEmpty)
+              row.key.text.trim(): row.value.text.trim(),
+        },
+        colorVariations: _colorSelections.entries
+            .where((e) => e.value)
+            .map((e) => e.key)
+            .toList(),
+        latitude: double.tryParse(_latCtrl.text.trim()),
+        longitude: double.tryParse(_lngCtrl.text.trim()),
+        images: List.from(_existingImageUrls),
+      );
+
+  Future<void> _saveDraft({bool silent = false}) async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      if (!silent) _showSnack('Please enter a product name first');
+      return;
+    }
+    if (!silent) setState(() => _draftSaving = true);
+    try {
+      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
+      final form = _buildForm(isDraft: true);
+      Product result;
+      if (_effectiveDraftId != null) {
+        result = await repo.updateProduct(_effectiveDraftId!, form);
+      } else {
+        result = await repo.createProductMultipart(
+          form: form,
+          images: _selectedImages,
+          video: _selectedVideo,
+        );
+        if (mounted) setState(() => _currentDraftId = result.id);
+      }
+      if (mounted) {
+        setState(() => _hasUnsavedChanges = false);
+        if (!silent) _showSnack('Draft saved!');
+      }
+    } catch (e) {
+      if (mounted && !silent) _showSnack('Failed to save draft: $e');
+    } finally {
+      if (mounted && !silent) setState(() => _draftSaving = false);
+    }
+  }
+
+  Future<void> _publishProduct() async {
+    if (_nameCtrl.text.trim().isEmpty || _selectedCategoryId == null) {
+      _showSnack('Please fill in name and category before publishing');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
+      if (_effectiveDraftId != null) {
+        await repo.publishDraft(_effectiveDraftId!);
+      } else {
+        final form = _buildForm();
+        await repo.createProductMultipart(
+          form: form,
+          images: _selectedImages,
+          video: _selectedVideo,
+        );
+      }
+      if (mounted) {
+        _showSnack(_isEditing ? 'Product updated!' : 'Product published!');
+        ref.invalidate(productsNotifierProvider);
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) _showSnack(e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -225,17 +355,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
 
       if (finalImage != null && mounted) {
-        setState(() => _selectedImages.add(finalImage!));
+        setState(() { _selectedImages.add(finalImage!); _hasUnsavedChanges = true; });
       }
     }
   }
 
   void _removeImage(int index) =>
-      setState(() => _selectedImages.removeAt(index));
+      setState(() { _selectedImages.removeAt(index); _hasUnsavedChanges = true; });
 
   Future<void> _pickVideo() async {
     final picked = await _picker.pickVideo(source: ImageSource.gallery);
-    if (picked != null) setState(() => _selectedVideo = picked);
+    if (picked != null) setState(() { _selectedVideo = picked; _hasUnsavedChanges = true; });
   }
 
   // ---------------------------------------------------------------------------
@@ -263,6 +393,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     setState(() {
       _tags.add(tag);
       _tagInputCtrl.clear();
+      _hasUnsavedChanges = true;
     });
   }
 
@@ -284,35 +415,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     setState(() => _loading = true);
     try {
-      final form = ProductForm(
-        name: _nameCtrl.text.trim(),
-        description: _descCtrl.text.trim(),
-        price: double.parse(_priceCtrl.text.trim()),
-        originalPrice: _mrpCtrl.text.trim().isEmpty
-            ? null
-            : double.tryParse(_mrpCtrl.text.trim()),
-        discountPercentage: _discountCtrl.text.trim().isEmpty
-            ? null
-            : int.tryParse(_discountCtrl.text.trim()),
-        stock: int.parse(_stockCtrl.text.trim()),
-        status: _status,
-        categoryId: _selectedCategoryId,
-        brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
-        unit: _selectedUnit,
-        tags: List.from(_tags),
-        specifications: {
-          for (final row in _specs)
-            if (row.key.text.trim().isNotEmpty)
-              row.key.text.trim(): row.value.text.trim(),
-        },
-        colorVariations: _colorSelections.entries
-            .where((e) => e.value)
-            .map((e) => e.key)
-            .toList(),
-        latitude: double.tryParse(_latCtrl.text.trim()),
-        longitude: double.tryParse(_lngCtrl.text.trim()),
-        images: List.from(_existingImageUrls),
-      );
+      final form = _buildForm();
 
       final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
 
@@ -328,6 +431,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       }
 
       if (mounted) {
+        setState(() => _hasUnsavedChanges = false);
         _showSnack(_isEditing ? 'Product updated!' : 'Product added successfully');
         ref.invalidate(productsNotifierProvider);
         context.pop();
@@ -348,40 +452,134 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return LoadingOverlay(
-      isLoading: _loading,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_isEditing ? 'Edit Product' : 'Add Product'),
-        ),
-        body: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildBasicInfoSection(),
-                const SizedBox(height: 16),
-                _buildMediaSection(),
-                const SizedBox(height: 16),
-                _buildSpecificationsSection(),
-                const SizedBox(height: 16),
-                _buildColorVariationsSection(),
-                const SizedBox(height: 16),
-                _buildPricingSection(),
-                const SizedBox(height: 16),
-                _buildCategorySection(),
-                const SizedBox(height: 16),
-                _buildLocationSection(),
-                const SizedBox(height: 24),
-                AppButton(
-                  label: _isEditing ? 'Save Changes' : 'Add Product',
-                  loading: _loading,
-                  onTap: _submit,
+    final pct = _completionPct;
+    final progressColor = pct >= 80
+        ? Colors.green
+        : pct >= 40
+            ? Colors.orange
+            : AppColors.secondary;
+
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          final leave = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Leave without saving?'),
+              content: const Text('Your unsaved changes will be lost.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Stay'),
                 ),
-                const SizedBox(height: 32),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Leave'),
+                ),
               ],
+            ),
+          );
+          if (leave == true && context.mounted) context.pop();
+        }
+      },
+      child: LoadingOverlay(
+        isLoading: _loading,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(_isEditing
+                ? (_isDraft ? 'Edit Draft' : 'Edit Product')
+                : 'Add Product'),
+          ),
+          body: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Progress + auto-save status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: pct / 100,
+                            backgroundColor: AppColors.border,
+                            valueColor: AlwaysStoppedAnimation(progressColor),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$pct%',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                      ),
+                    ],
+                  ),
+                  if (_isDraft) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _draftSaving
+                          ? 'Saving draft...'
+                          : _hasUnsavedChanges
+                              ? 'Unsaved changes'
+                              : 'Draft saved',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _buildBasicInfoSection(),
+                  const SizedBox(height: 16),
+                  _buildMediaSection(),
+                  const SizedBox(height: 16),
+                  _buildSpecificationsSection(),
+                  const SizedBox(height: 16),
+                  _buildColorVariationsSection(),
+                  const SizedBox(height: 16),
+                  _buildPricingSection(),
+                  const SizedBox(height: 16),
+                  _buildCategorySection(),
+                  const SizedBox(height: 16),
+                  _buildLocationSection(),
+                  const SizedBox(height: 24),
+                  // Save as Draft button
+                  OutlinedButton(
+                    onPressed: _draftSaving ? null : () => _saveDraft(),
+                    child: _draftSaving
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              SizedBox(width: 8),
+                              Text('Saving...'),
+                            ],
+                          )
+                        : const Text('Save as Draft'),
+                  ),
+                  const SizedBox(height: 10),
+                  // Publish / Save button
+                  AppButton(
+                    label: _isDraft
+                        ? 'Publish Product'
+                        : (_isEditing ? 'Save Changes' : 'Add Product'),
+                    loading: _loading,
+                    onTap: _isDraft ? _publishProduct : _submit,
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ),

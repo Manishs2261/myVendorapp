@@ -26,6 +26,7 @@ abstract final class RouteNames {
   static const notifications    = '/notifications';
   static const settings         = '/settings';
 
+  static const drafts     = '/products/drafts';
   static const aiPreview  = '/ai-preview';
   static const cropEditor = '/crop-editor';
 

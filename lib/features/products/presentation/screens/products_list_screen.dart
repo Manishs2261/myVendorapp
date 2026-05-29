@@ -145,10 +145,12 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
     }
 
     try {
+      final isDraftFilter = _status == 'draft';
       final result = await ref.read(productsRepositoryProvider).getProducts(
             page: page,
             search: _search.isEmpty ? null : _search,
-            status: _status,
+            status: isDraftFilter ? null : _status,
+            isDraft: isDraftFilter ? true : null,
             categoryId: _categoryId,
             stockFilter: _stockFilter,
             sortBy: _sortBy,
@@ -251,6 +253,11 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
             ),
             tooltip: 'Advanced Filters',
             onPressed: () => _showAdvancedFilters(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_note),
+            tooltip: 'View Drafts',
+            onPressed: () => context.push(RouteNames.drafts),
           ),
           IconButton(
             icon: const Icon(Icons.add),
@@ -640,12 +647,15 @@ class _QuickFilterRow extends ConsumerWidget {
                 ? 'All Status'
                 : status == 'active'
                     ? 'Active'
-                    : 'Inactive',
+                    : status == 'draft'
+                        ? 'Draft'
+                        : 'Inactive',
             isActive: status != null,
             items: const [
               DropdownMenuItem(value: null, child: Text('All Status')),
               DropdownMenuItem(value: 'active', child: Text('Active')),
               DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+              DropdownMenuItem(value: 'draft', child: Text('Draft')),
             ],
             value: status,
             onChanged: onStatusChanged,

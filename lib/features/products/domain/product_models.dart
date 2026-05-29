@@ -1,4 +1,4 @@
-enum ProductStatus { active, inactive, outOfStock }
+enum ProductStatus { active, inactive, outOfStock, draft }
 
 class Category {
   final int id;
@@ -57,6 +57,9 @@ class Product {
   final bool isFeatured;
   final double rating;
   final int reviewCount;
+  final bool isDraft;
+  final DateTime? draftSavedAt;
+  final DateTime? publishedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -85,6 +88,9 @@ class Product {
     this.isFeatured = false,
     this.rating = 0.0,
     this.reviewCount = 0,
+    this.isDraft = false,
+    this.draftSavedAt,
+    this.publishedAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -99,10 +105,12 @@ class Product {
           double.tryParse(json['original_price']?.toString() ?? ''),
       discountPercentage: json['discount_percentage'] as int?,
       stock: json['stock'] as int? ?? 0,
-      status: ProductStatus.values.firstWhere(
-        (s) => s.name == (json['status'] as String? ?? 'active'),
-        orElse: () => ProductStatus.active,
-      ),
+      status: json['is_draft'] == true
+          ? ProductStatus.draft
+          : ProductStatus.values.firstWhere(
+              (s) => s.name == (json['status'] as String? ?? 'active'),
+              orElse: () => ProductStatus.active,
+            ),
       imageUrls: (json['images'] as List?)
               ?.map((e) => e is String ? e : e['url'] as String)
               .toList() ??
@@ -125,6 +133,13 @@ class Product {
       isFeatured: json['is_featured'] as bool? ?? false,
       rating: double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
       reviewCount: json['review_count'] as int? ?? 0,
+      isDraft: json['is_draft'] as bool? ?? false,
+      draftSavedAt: json['draft_saved_at'] != null
+          ? DateTime.tryParse(json['draft_saved_at'] as String)
+          : null,
+      publishedAt: json['published_at'] != null
+          ? DateTime.tryParse(json['published_at'] as String)
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -181,6 +196,7 @@ class ProductForm {
   final double? latitude;
   final double? longitude;
   final List<String> images;
+  final bool isDraft;
 
   const ProductForm({
     required this.name,
@@ -199,6 +215,7 @@ class ProductForm {
     this.latitude,
     this.longitude,
     this.images = const [],
+    this.isDraft = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -219,5 +236,6 @@ class ProductForm {
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
         if (images.isNotEmpty) 'images': images,
+        'is_draft': isDraft,
       };
 }

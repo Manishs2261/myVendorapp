@@ -12,6 +12,7 @@ class ProductsRemoteSource {
     int limit = 20,
     String? search,
     String? status,
+    bool? isDraft,
     int? categoryId,
     String? stockFilter,
     String sortBy = 'recent',
@@ -28,7 +29,8 @@ class ProductsRemoteSource {
         'limit': limit,
         'sort_by': sortBy,
         if (search != null && search.isNotEmpty) 'search': search,
-        if (status != null) 'status': status,
+        if (isDraft != null) 'is_draft': isDraft,
+        if (status != null && isDraft == null) 'status': status,
         if (categoryId != null) 'category_id': categoryId,
         if (stockFilter != null) 'stock_filter': stockFilter,
         if (discountOnly) 'discount_only': true,
@@ -38,6 +40,11 @@ class ProductsRemoteSource {
         if (maxStock != null) 'stock_max': maxStock,
       },
     );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> publishDraft(int id) async {
+    final response = await _dio.post('/vendor/products/$id/publish');
     return response.data as Map<String, dynamic>;
   }
 
