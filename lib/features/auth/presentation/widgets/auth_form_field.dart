@@ -8,6 +8,7 @@ class AuthFormField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
+  final Widget? prefixIcon;
 
   const AuthFormField({
     super.key,
@@ -17,6 +18,7 @@ class AuthFormField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.suffixIcon,
+    this.prefixIcon,
   });
 
   @override
@@ -30,6 +32,7 @@ class AuthFormField extends StatelessWidget {
         keyboardType: keyboardType,
         validator: validator,
         suffixIcon: suffixIcon,
+        prefixIcon: prefixIcon,
       ),
     );
   }

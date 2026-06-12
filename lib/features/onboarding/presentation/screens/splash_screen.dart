@@ -87,7 +87,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
     _textController.forward();
 
-    await Future.delayed(const Duration(milliseconds: 1600));
+    await Future.delayed(const Duration(milliseconds: 2000));
     if (!mounted) return;
     _navigate();
   }
@@ -101,7 +101,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     onboardingState.when(
       loading: () async {
         _navigationTriggered = false;
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 1600));
         if (mounted) _navigate();
       },
       error: (_, _) => context.go(RouteNames.login),
@@ -158,7 +158,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 FadeTransition(
                   opacity: _textOpacity,
                   child: Text(
-                    'Lumina Vendor',
+                    'My Shop',
                     style: GoogleFonts.outfit(
                       fontSize: isTablet ? 40 : 30,
                       fontWeight: FontWeight.w700,
@@ -190,7 +190,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             child: FadeTransition(
               opacity: _taglineOpacity,
               child: Text(
-                'POWERED BY LUMINA',
+                'POWERED BY WHERE IS MY SHOPS',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 11,

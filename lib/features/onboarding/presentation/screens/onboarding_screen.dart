@@ -34,10 +34,10 @@ const _pages = [
     gradientColors: [AppColors.primary, AppColors.secondary],
   ),
   _PageData(
-    title: 'Track Every Order',
+    title: 'Reach Nearby Customers',
     description:
-        'Stay on top of orders in real-time. From confirmed to delivered, never miss a beat.',
-    icon: Icons.local_shipping_rounded,
+        'List your shop on the map and get discovered by customers in your area looking for exactly what you sell.',
+    icon: Icons.location_on_rounded,
     gradientColors: [AppColors.secondary, AppColors.tertiary],
   ),
   _PageData(

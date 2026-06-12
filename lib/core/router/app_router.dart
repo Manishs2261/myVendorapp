@@ -75,7 +75,7 @@ GoRouter appRouter(Ref ref) {
       }
 
       // Onboarding seen but not logged in: go to login
-      if (seenOnboarding && !loggedIn && !goingToAuth) {
+      if (seenOnboarding && !loggedIn && !goingToAuth && !goingToSplash) {
         return RouteNames.login;
       }
 
