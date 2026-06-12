@@ -80,7 +80,7 @@ class _LuminaVendorAppState extends ConsumerState<LuminaVendorApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
-      title: 'Lumina Vendor',
+      title: 'My Shop',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
