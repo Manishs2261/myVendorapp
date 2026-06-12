@@ -44,8 +44,12 @@ class DioClient {
         }
 
         final status = err.response?.statusCode;
-        final message =
-            err.response?.data?['message'] as String? ?? err.message ?? 'Unknown error';
+        final data = err.response?.data;
+        final message = (data is Map
+                    ? (data['detail'] as String? ?? data['message'] as String?)
+                    : null) ??
+                (err.message?.isNotEmpty == true ? err.message : null) ??
+                'Something went wrong';
 
         if (status == 401) {
           handler.next(
