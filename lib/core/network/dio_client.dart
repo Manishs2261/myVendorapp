@@ -5,7 +5,8 @@ import 'api_exception.dart';
 import 'logging_interceptor.dart';
 
 class DioClient {
-  static const baseUrl = 'https://myshopbackend-ecrq.onrender.com';
+  // static const baseUrl = 'https://myshopbackend-ecrq.onrender.com';
+   static const baseUrl = 'https://api.whereismyshops.com';
 
   static Dio create(SecureStorageService storage) {
     final dio = Dio(
