@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/cache/cache_service.dart';
 import 'core/cache/offline_queue.dart';
+import 'core/config/app_config.dart';
 import 'core/providers/cache_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/router/route_names.dart';
@@ -14,7 +15,10 @@ import 'core/utils/app_logger.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'firebase_options.dart';
 
-void main() async {
+void main() => bootstrap(AppFlavor.prod);
+
+Future<void> bootstrap(AppFlavor flavor) async {
+  AppConfig.initialize(flavor);
   WidgetsFlutterBinding.ensureInitialized();
   AppLogger.initialize();
 

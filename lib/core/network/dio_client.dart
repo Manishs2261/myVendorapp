@@ -1,17 +1,15 @@
 import 'package:dio/dio.dart';
+import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
 import 'auth_interceptor.dart';
 import 'api_exception.dart';
 import 'logging_interceptor.dart';
 
 class DioClient {
-  // static const baseUrl = 'https://myshopbackend-ecrq.onrender.com';
-   static const baseUrl = 'https://api.whereismyshops.com';
-
   static Dio create(SecureStorageService storage) {
     final dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: AppConfig.apiBaseUrl,
         connectTimeout: const Duration(seconds: 90),
         receiveTimeout: const Duration(seconds: 90),
         headers: {
