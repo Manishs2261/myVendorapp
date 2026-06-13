@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -93,7 +95,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Custom color variations (hex values not in the predefined palette)
   final List<({String hex, String name})> _customColors = [];
   final _customColorNameCtrl = TextEditingController();
-  String _customColorHex = '#E91E63';
+  Color _customPickerColor = const Color(0xFFE91E63);
 
   // Specifications: each entry = (key controller, value controller)
   final List<({TextEditingController key, TextEditingController value})> _specs =
@@ -115,9 +117,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Category
   int? _selectedCategoryId;
 
-  // Location
-  final _latCtrl = TextEditingController();
-  final _lngCtrl = TextEditingController();
+
 
   void _markDirty() {
     if (!_hasUnsavedChanges && mounted) setState(() => _hasUnsavedChanges = true);
@@ -129,12 +129,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (widget.initialProduct != null) _prefillFromProduct(widget.initialProduct!);
     for (final ctrl in [
       _nameCtrl, _descCtrl, _brandCtrl, _mrpCtrl,
-      _priceCtrl, _discountCtrl, _stockCtrl, _latCtrl, _lngCtrl,
+      _priceCtrl, _discountCtrl, _stockCtrl,
     ]) {
       ctrl.addListener(_markDirty);
     }
     _autoSaveTimer = Timer.periodic(const Duration(seconds: 45), (_) {
-      if (_hasUnsavedChanges && _isDraft && _nameCtrl.text.trim().isNotEmpty) {
+      if (_hasUnsavedChanges && _effectiveDraftId != null && _nameCtrl.text.trim().isNotEmpty) {
         _saveDraft(silent: true);
       }
     });
@@ -168,8 +168,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _status = (p.status == ProductStatus.outOfStock) ? 'inactive' : p.status.name;
     _selectedUnit = p.unit;
     _selectedCategoryId = p.categoryId;
-    _latCtrl.text = p.latitude?.toString() ?? '';
-    _lngCtrl.text = p.longitude?.toString() ?? '';
+
   }
 
   @override
@@ -183,8 +182,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _priceCtrl.dispose();
     _discountCtrl.dispose();
     _stockCtrl.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
+
     _customColorNameCtrl.dispose();
     for (final row in _specs) {
       row.key.dispose();
@@ -219,8 +217,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ..._colorSelections.entries.where((e) => e.value).map((e) => e.key),
           ..._customColors.map((c) => c.hex),
         ],
-        latitude: double.tryParse(_latCtrl.text.trim()),
-        longitude: double.tryParse(_lngCtrl.text.trim()),
+        latitude: null,
+        longitude: null,
         images: List.from(_existingImageUrls),
         removeVideo: _removeVideo,
       );
@@ -380,17 +378,35 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   Future<void> _pickVideo() async {
     final picked = await _picker.pickVideo(source: ImageSource.gallery);
-    if (picked != null) setState(() { _selectedVideo = picked; _hasUnsavedChanges = true; });
+    if (picked == null) return;
+
+    final bytes = await picked.length();
+    const maxSizeBytes = 30 * 1024 * 1024; // 30 MB
+    if (bytes > maxSizeBytes) {
+      _showSnack('Video size must be less than 30 MB');
+      return;
+    }
+
+    setState(() {
+      _selectedVideo = picked;
+      _hasUnsavedChanges = true;
+    });
   }
 
   // ---------------------------------------------------------------------------
   // Spec helpers
   // ---------------------------------------------------------------------------
 
-  void _addSpec() => setState(() => _specs.add((
-        key: TextEditingController(),
-        value: TextEditingController(),
-      )));
+  void _addSpec() {
+    if (_specs.length >= 30) {
+      _showSnack('Maximum of 30 specifications allowed');
+      return;
+    }
+    setState(() => _specs.add((
+          key: TextEditingController(),
+          value: TextEditingController(),
+        )));
+  }
 
   void _removeSpec(int index) {
     _specs[index].key.dispose();
@@ -403,13 +419,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ---------------------------------------------------------------------------
 
   void _addTag() {
-    final tag = _tagInputCtrl.text.trim();
-    if (tag.isEmpty || _tags.contains(tag)) return;
+    final rawText = _tagInputCtrl.text.trim();
+    if (rawText.isEmpty) return;
+
+    final parsedTags = rawText
+        .split(RegExp(r'[\n,]'))
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    if (parsedTags.isEmpty) return;
+
     setState(() {
-      _tags.add(tag);
+      for (var tag in parsedTags) {
+        if (tag.length > 20) {
+          tag = tag.substring(0, 20);
+        }
+        if (!_tags.contains(tag)) {
+          if (_tags.length >= 50) {
+            _showSnack('Maximum of 50 tags allowed');
+            break;
+          }
+          _tags.add(tag);
+        }
+      }
       _tagInputCtrl.clear();
       _hasUnsavedChanges = true;
     });
+  }
+
+  void _onTagInputChanged(String val) {
+    if (val.contains('\n') || val.contains(',')) {
+      _addTag();
+    } else {
+      if (val.length > 20) {
+        _tagInputCtrl.value = TextEditingValue(
+          text: val.substring(0, 20),
+          selection: const TextSelection.collapsed(offset: 20),
+        );
+      }
+      setState(() {});
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -480,16 +530,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         if (!didPop) {
           final leave = await showDialog<bool>(
             context: context,
-            builder: (_) => AlertDialog(
+            builder: (ctx) => AlertDialog(
               title: const Text('Leave without saving?'),
               content: const Text('Your unsaved changes will be lost.'),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: () => Navigator.pop(ctx, false),
                   child: const Text('Stay'),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
+                  onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Leave'),
                 ),
               ],
@@ -536,7 +586,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                     ],
                   ),
-                  if (_isDraft) ...[
+                  if (_effectiveDraftId != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       _draftSaving
@@ -561,8 +611,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   _buildPricingSection(),
                   const SizedBox(height: 16),
                   _buildCategorySection(),
-                  const SizedBox(height: 16),
-                  _buildLocationSection(),
+
                   const SizedBox(height: 24),
                   // Save as Draft button
                   OutlinedButton(
@@ -616,8 +665,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             controller: _nameCtrl,
             label: 'Product Name',
             hint: 'e.g. Premium Silk Saree',
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
+            maxLength: 100,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              if (v.trim().length > 100) return 'Name cannot exceed 100 characters';
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           AppTextField(
@@ -625,12 +678,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             label: 'Description',
             hint: 'Describe your product in detail...',
             maxLines: 4,
+            maxLength: 2000,
+            validator: (v) {
+              if (v != null && v.trim().length > 2000) {
+                return 'Description cannot exceed 2000 characters';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           AppTextField(
             controller: _brandCtrl,
             label: 'Brand',
             hint: 'Brand name',
+            maxLength: 50,
+            validator: (v) {
+              if (v != null && v.trim().length > 50) {
+                return 'Brand name cannot exceed 50 characters';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           _buildTagInput(),
@@ -649,8 +716,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               child: AppTextField(
                 controller: _tagInputCtrl,
                 label: 'Tags',
-                hint: 'Add tag...',
-                onChanged: (_) => setState(() {}),
+                hint: 'Add one or paste multiple (one per line)',
+                maxLines: null,
+                onChanged: _onTagInputChanged,
               ),
             ),
             const SizedBox(width: 8),
@@ -929,7 +997,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         Text('Upload product video',
                             style: TextStyle(color: AppColors.primary)),
                         SizedBox(height: 2),
-                        Text('MP4, MOV · Max 100 MB',
+                        Text('MP4, MOV · Max 30 MB',
                             style: TextStyle(
                                 color: AppColors.textMuted, fontSize: 12)),
                       ],
@@ -996,6 +1064,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           controller: row.key,
                           label: 'Key',
                           hint: 'e.g. Material',
+                          maxLength: 30,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1004,6 +1073,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           controller: row.value,
                           label: 'Value',
                           hint: 'e.g. Cotton',
+                          maxLength: 30,
                         ),
                       ),
                       IconButton(
@@ -1024,17 +1094,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ---------------------------------------------------------------------------
 
   void _addCustomColor() {
-    final name = _customColorNameCtrl.text.trim();
-    if (name.isEmpty) return;
-    final hex = _customColorHex.toUpperCase();
+    final hex = _colorToHex(_customPickerColor);
+    String name = _customColorNameCtrl.text.trim();
+    if (name.isEmpty) name = hex;
+    final currentTotal = _colorSelections.entries.where((e) => e.value).length + _customColors.length;
+    if (currentTotal >= 5) {
+      _showSnack('Maximum of 5 colors allowed');
+      return;
+    }
     final duplicate = _customColors.any(
       (c) => c.name.toLowerCase() == name.toLowerCase() || c.hex == hex,
     );
-    if (duplicate) return;
+    if (duplicate) {
+      _showSnack('This color or name is already added');
+      return;
+    }
     setState(() {
       _customColors.add((hex: hex, name: name));
       _customColorNameCtrl.clear();
-      _customColorHex = '#E91E63';
+      _customPickerColor = const Color(0xFFE91E63);
     });
     _markDirty();
   }
@@ -1056,8 +1134,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               final selected = _colorSelections[hex] ?? false;
               final color = _hexToColor(hex);
               return GestureDetector(
-                onTap: () =>
-                    setState(() => _colorSelections[hex] = !selected),
+                onTap: () {
+                  final currentTotal = _colorSelections.entries.where((e) => e.value).length + _customColors.length;
+                  if (!selected && currentTotal >= 5) {
+                    _showSnack('Maximum of 5 colors allowed');
+                    return;
+                  }
+                  setState(() => _colorSelections[hex] = !selected);
+                },
                 child: Tooltip(
                   message: label,
                   child: AnimatedContainer(
@@ -1154,43 +1238,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               // Color preview / picker trigger
               GestureDetector(
                 onTap: () async {
-                  final ctrl = TextEditingController(
-                      text: _customColorHex.replaceFirst('#', ''));
-                  final confirmed = await showDialog<bool>(
+                  Color tempColor = _customPickerColor;
+                  await showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Enter hex color'),
-                      content: TextField(
-                        controller: ctrl,
-                        autofocus: true,
-                        maxLength: 6,
-                        decoration: const InputDecoration(
-                          prefixText: '#',
-                          hintText: 'e.g. 1ABC9C',
-                          counterText: '',
+                      title: const Text('Pick a color'),
+                      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      content: SingleChildScrollView(
+                        child: StatefulBuilder(
+                          builder: (ctx, setInner) => ColorPicker(
+                            pickerColor: tempColor,
+                            onColorChanged: (c) {
+                              tempColor = c;
+                              setInner(() {});
+                            },
+                            enableAlpha: false,
+                            labelTypes: const [],
+                            pickerAreaHeightPercent: 0.7,
+                          ),
                         ),
-                        onSubmitted: (_) => Navigator.pop(ctx, true),
                       ),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel')),
-                        TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('OK')),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            setState(() => _customPickerColor = tempColor);
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Select'),
+                        ),
                       ],
                     ),
                   );
-                  if (confirmed == true && ctrl.text.length == 6) {
-                    setState(
-                        () => _customColorHex = '#${ctrl.text.toUpperCase()}');
-                  }
                 },
                 child: Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: _hexToColor(_customColorHex),
+                    color: _customPickerColor,
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.border, width: 1.5),
                   ),
@@ -1256,6 +1344,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return Color(int.parse('FF$h', radix: 16));
   }
 
+  String _colorToHex(Color c) =>
+      '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
   bool _isLight(Color c) =>
       c.computeLuminance() > 0.5;
 
@@ -1275,12 +1366,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   controller: _mrpCtrl,
                   label: 'MRP / Original Price (INR)',
                   hint: 'e.g. 999',
+                  maxLength: 10,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
                     if (double.tryParse(v.trim()) == null) {
                       return 'Invalid price';
+                    }
+                    if (v.trim().length > 10) {
+                      return 'Maximum 10 digits allowed';
                     }
                     return null;
                   },
@@ -1292,12 +1387,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   controller: _priceCtrl,
                   label: 'Selling Price (INR) *',
                   hint: '0.00',
+                  maxLength: 10,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     if (double.tryParse(v.trim()) == null) {
                       return 'Invalid price';
+                    }
+                    if (v.trim().length > 10) {
+                      return 'Maximum 10 digits allowed';
                     }
                     return null;
                   },
@@ -1313,12 +1412,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   controller: _discountCtrl,
                   label: 'Discount Badge (%)',
                   hint: '0',
+                  maxLength: 2,
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
                     final n = int.tryParse(v.trim());
-                    if (n == null || n < 0 || n > 100) {
-                      return '0–100 only';
+                    if (n == null || n < 0 || n > 99) {
+                      return '0–99 only';
                     }
                     return null;
                   },
@@ -1350,11 +1450,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   controller: _stockCtrl,
                   label: 'Stock Quantity *',
                   hint: '0',
+                  maxLength: 5,
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     if (int.tryParse(v.trim()) == null) {
                       return 'Invalid number';
+                    }
+                    if (v.trim().length > 5) {
+                      return 'Maximum 5 digits allowed';
                     }
                     return null;
                   },
@@ -1421,67 +1525,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Section: Product Location
-  // ---------------------------------------------------------------------------
 
-  Widget _buildLocationSection() {
-    return _SectionCard(
-      title: 'Product Location',
-      subtitle: 'Optional',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _latCtrl,
-                  label: 'Latitude',
-                  hint: '21.2514',
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true, signed: true),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = double.tryParse(v.trim());
-                    if (n == null || n < -90 || n > 90) {
-                      return 'Invalid latitude';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppTextField(
-                  controller: _lngCtrl,
-                  label: 'Longitude',
-                  hint: '81.6296',
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true, signed: true),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = double.tryParse(v.trim());
-                    if (n == null || n < -180 || n > 180) {
-                      return 'Invalid longitude';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Set precise location for hyperlocal search visibility',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
   List<Product> _drafts = [];
   bool _loading = false;
   String? _error;
+  int? _deletingId;
 
   @override
   void initState() {
@@ -44,12 +45,12 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
   Future<void> _publish(Product draft) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Publish Product'),
         content: Text('Publish "${draft.name}" to your store?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Publish')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Publish')),
         ],
       ),
     );
@@ -77,14 +78,14 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
   Future<void> _delete(Product draft) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Delete Draft'),
         content: Text('Delete "${draft.name}"? This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
         ],
@@ -92,17 +93,22 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    setState(() => _deletingId = draft.id);
     try {
       final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
       await repo.deleteProduct(draft.id);
       if (mounted) {
-        setState(() => _drafts.removeWhere((d) => d.id == draft.id));
+        setState(() {
+          _drafts.removeWhere((d) => d.id == draft.id);
+          _deletingId = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Draft deleted')),
         );
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _deletingId = null);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete: $e')),
         );
@@ -143,6 +149,7 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
         onPressed: () => context.push(RouteNames.addProduct),
         icon: const Icon(Icons.add),
         label: const Text('New Product'),
+        shape: const StadiumBorder(),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -169,6 +176,7 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
                           draft: _drafts[i],
                           completionPct: _completionPct(_drafts[i]),
                           lastSaved: _formatDate(_drafts[i].draftSavedAt),
+                          isDeleting: _deletingId == _drafts[i].id,
                           onEdit: () => context.push(
                             RouteNames.editProductPath(_drafts[i].id.toString()),
                             extra: _drafts[i],
@@ -212,6 +220,7 @@ class _DraftCard extends StatelessWidget {
   final Product draft;
   final int completionPct;
   final String lastSaved;
+  final bool isDeleting;
   final VoidCallback onEdit;
   final VoidCallback onPublish;
   final VoidCallback onDelete;
@@ -220,6 +229,7 @@ class _DraftCard extends StatelessWidget {
     required this.draft,
     required this.completionPct,
     required this.lastSaved,
+    required this.isDeleting,
     required this.onEdit,
     required this.onPublish,
     required this.onDelete,
@@ -333,11 +343,20 @@ class _DraftCard extends StatelessWidget {
                   child: const Text('Publish'),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                  onPressed: onDelete,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: isDeleting
+                      ? const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          onPressed: onDelete,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                 ),
               ],
             ),
