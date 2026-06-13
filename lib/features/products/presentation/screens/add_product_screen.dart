@@ -87,6 +87,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final List<String> _existingImageUrls = [];
   final List<XFile> _selectedImages = [];
   XFile? _selectedVideo;
+  String? _existingVideoUrl;
+  bool _removeVideo = false;
+
+  // Custom color variations (hex values not in the predefined palette)
+  final List<({String hex, String name})> _customColors = [];
+  final _customColorNameCtrl = TextEditingController();
+  String _customColorHex = '#E91E63';
 
   // Specifications: each entry = (key controller, value controller)
   final List<({TextEditingController key, TextEditingController value})> _specs =
@@ -139,14 +146,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _brandCtrl.text = p.brand ?? '';
     _tags.addAll(p.tags);
     _existingImageUrls.addAll(p.imageUrls);
+    _existingVideoUrl = p.videoUrl;
     for (final e in p.specifications.entries) {
       _specs.add((
         key: TextEditingController(text: e.key),
         value: TextEditingController(text: e.value),
       ));
     }
+    final knownHexes = _colorSwatches.map((s) => s.$1).toSet();
     for (final hex in p.colorVariations) {
-      _colorSelections[hex] = true;
+      if (knownHexes.contains(hex)) {
+        _colorSelections[hex] = true;
+      } else {
+        _customColors.add((hex: hex, name: hex));
+      }
     }
     _priceCtrl.text = p.price.toString();
     _mrpCtrl.text = p.originalPrice?.toString() ?? '';
@@ -172,6 +185,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _stockCtrl.dispose();
     _latCtrl.dispose();
     _lngCtrl.dispose();
+    _customColorNameCtrl.dispose();
     for (final row in _specs) {
       row.key.dispose();
       row.value.dispose();
@@ -201,13 +215,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             if (row.key.text.trim().isNotEmpty)
               row.key.text.trim(): row.value.text.trim(),
         },
-        colorVariations: _colorSelections.entries
-            .where((e) => e.value)
-            .map((e) => e.key)
-            .toList(),
+        colorVariations: [
+          ..._colorSelections.entries.where((e) => e.value).map((e) => e.key),
+          ..._customColors.map((c) => c.hex),
+        ],
         latitude: double.tryParse(_latCtrl.text.trim()),
         longitude: double.tryParse(_lngCtrl.text.trim()),
         images: List.from(_existingImageUrls),
+        removeVideo: _removeVideo,
       );
 
   Future<void> _saveDraft({bool silent = false}) async {
@@ -856,54 +871,92 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ?.copyWith(color: AppColors.textMuted),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _selectedVideo == null ? _pickVideo : null,
-          child: Container(
+        // Show existing uploaded video (edit mode, before user picks a new one)
+        if (_existingVideoUrl != null && _selectedVideo == null)
+          Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.surface3,
               borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: AppColors.border),
+              border: Border.all(color: AppColors.border),
             ),
-            child: _selectedVideo == null
-                ? const Column(
-                    children: [
-                      Icon(Icons.videocam_outlined,
-                          color: AppColors.textMuted),
-                      SizedBox(height: 4),
-                      Text('Upload product video',
-                          style: TextStyle(color: AppColors.primary)),
-                      SizedBox(height: 2),
-                      Text('MP4, MOV · Max 100 MB',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 12)),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      const Icon(Icons.videocam,
-                          color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _selectedVideo!.name,
-                          style: const TextStyle(
-                              color: AppColors.textPrimary),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close,
-                            color: AppColors.textMuted),
-                        onPressed: () =>
-                            setState(() => _selectedVideo = null),
-                      ),
-                    ],
+            child: Row(
+              children: [
+                const Icon(Icons.videocam, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Product video uploaded',
+                    style: TextStyle(color: AppColors.textPrimary),
+                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _existingVideoUrl = null;
+                    _removeVideo = true;
+                    _markDirty();
+                  }),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFE05A5A),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Remove video', style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          )
+        else
+          GestureDetector(
+            onTap: _selectedVideo == null ? _pickVideo : null,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface3,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: _selectedVideo == null
+                  ? const Column(
+                      children: [
+                        Icon(Icons.videocam_outlined,
+                            color: AppColors.textMuted),
+                        SizedBox(height: 4),
+                        Text('Upload product video',
+                            style: TextStyle(color: AppColors.primary)),
+                        SizedBox(height: 2),
+                        Text('MP4, MOV · Max 100 MB',
+                            style: TextStyle(
+                                color: AppColors.textMuted, fontSize: 12)),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        const Icon(Icons.videocam,
+                            color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _selectedVideo!.name,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              color: AppColors.textMuted),
+                          onPressed: () =>
+                              setState(() => _selectedVideo = null),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -970,50 +1023,230 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // Section: Color Variations
   // ---------------------------------------------------------------------------
 
+  void _addCustomColor() {
+    final name = _customColorNameCtrl.text.trim();
+    if (name.isEmpty) return;
+    final hex = _customColorHex.toUpperCase();
+    final duplicate = _customColors.any(
+      (c) => c.name.toLowerCase() == name.toLowerCase() || c.hex == hex,
+    );
+    if (duplicate) return;
+    setState(() {
+      _customColors.add((hex: hex, name: name));
+      _customColorNameCtrl.clear();
+      _customColorHex = '#E91E63';
+    });
+    _markDirty();
+  }
+
   Widget _buildColorVariationsSection() {
     return _SectionCard(
       title: 'Color Variations',
       subtitle: 'For clothing/accessories',
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _colorSwatches.map(((String, String) swatch) {
-          final hex = swatch.$1;
-          final label = swatch.$2;
-          final selected = _colorSelections[hex] ?? false;
-          final color = _hexToColor(hex);
-          return GestureDetector(
-            onTap: () =>
-                setState(() => _colorSelections[hex] = !selected),
-            child: Tooltip(
-              message: label,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.border,
-                    width: selected ? 2.5 : 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Predefined swatches
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _colorSwatches.map(((String, String) swatch) {
+              final hex = swatch.$1;
+              final label = swatch.$2;
+              final selected = _colorSelections[hex] ?? false;
+              final color = _hexToColor(hex);
+              return GestureDetector(
+                onTap: () =>
+                    setState(() => _colorSelections[hex] = !selected),
+                child: Tooltip(
+                  message: label,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.border,
+                        width: selected ? 2.5 : 1,
+                      ),
+                    ),
+                    child: selected
+                        ? Icon(
+                            Icons.check,
+                            size: 18,
+                            color: _isLight(color)
+                                ? Colors.black
+                                : Colors.white,
+                          )
+                        : null,
                   ),
                 ),
-                child: selected
-                    ? Icon(
-                        Icons.check,
-                        size: 18,
-                        color: _isLight(color)
-                            ? Colors.black
-                            : Colors.white,
-                      )
-                    : null,
-              ),
+              );
+            }).toList(),
+          ),
+
+          // Custom colors added by vendor
+          if (_customColors.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _customColors.map((c) {
+                final color = _hexToColor(c.hex);
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Tooltip(
+                      message: c.name,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.primary, width: 2),
+                        ),
+                        child: Icon(
+                          Icons.check,
+                          size: 18,
+                          color: _isLight(color)
+                              ? Colors.black
+                              : Colors.white,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _customColors.remove(c)),
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE05A5A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,
+                              size: 11, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
+          ],
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          // Custom color input row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Color preview / picker trigger
+              GestureDetector(
+                onTap: () async {
+                  final ctrl = TextEditingController(
+                      text: _customColorHex.replaceFirst('#', ''));
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Enter hex color'),
+                      content: TextField(
+                        controller: ctrl,
+                        autofocus: true,
+                        maxLength: 6,
+                        decoration: const InputDecoration(
+                          prefixText: '#',
+                          hintText: 'e.g. 1ABC9C',
+                          counterText: '',
+                        ),
+                        onSubmitted: (_) => Navigator.pop(ctx, true),
+                      ),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('OK')),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true && ctrl.text.length == 6) {
+                    setState(
+                        () => _customColorHex = '#${ctrl.text.toUpperCase()}');
+                  }
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _hexToColor(_customColorHex),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: const Icon(Icons.colorize,
+                      size: 16, color: Colors.white70),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Color name input
+              Expanded(
+                child: TextField(
+                  controller: _customColorNameCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Color name (e.g. Navy Blue)',
+                    hintStyle:
+                        const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
+                    filled: true,
+                    fillColor: AppColors.surface3,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          const BorderSide(color: AppColors.border),
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                  onSubmitted: (_) => _addCustomColor(),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Add button
+              SizedBox(
+                height: 36,
+                child: ElevatedButton(
+                  onPressed: _addCustomColor,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('+ Add',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

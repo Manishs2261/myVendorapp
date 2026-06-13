@@ -57,6 +57,7 @@ class Product {
   final bool isFeatured;
   final double rating;
   final int reviewCount;
+  final String? videoUrl;
   final bool isDraft;
   final DateTime? draftSavedAt;
   final DateTime? publishedAt;
@@ -88,6 +89,7 @@ class Product {
     this.isFeatured = false,
     this.rating = 0.0,
     this.reviewCount = 0,
+    this.videoUrl,
     this.isDraft = false,
     this.draftSavedAt,
     this.publishedAt,
@@ -133,6 +135,7 @@ class Product {
       isFeatured: json['is_featured'] as bool? ?? false,
       rating: double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
       reviewCount: json['review_count'] as int? ?? 0,
+      videoUrl: json['video_url'] as String?,
       isDraft: json['is_draft'] as bool? ?? false,
       draftSavedAt: json['draft_saved_at'] != null
           ? DateTime.tryParse(json['draft_saved_at'] as String)
@@ -197,6 +200,7 @@ class ProductForm {
   final double? longitude;
   final List<String> images;
   final bool isDraft;
+  final bool removeVideo;
 
   const ProductForm({
     required this.name,
@@ -216,6 +220,7 @@ class ProductForm {
     this.longitude,
     this.images = const [],
     this.isDraft = false,
+    this.removeVideo = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -237,5 +242,6 @@ class ProductForm {
         if (longitude != null) 'longitude': longitude,
         if (images.isNotEmpty) 'images': images,
         'is_draft': isDraft,
+        if (removeVideo) 'remove_video': true,
       };
 }

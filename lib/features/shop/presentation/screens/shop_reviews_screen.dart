@@ -536,14 +536,7 @@ class _ReviewCard extends StatelessWidget {
           ),
           if (review.comment != null && review.comment!.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
-              review.comment!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-                height: 1.4,
-              ),
-            ),
+            _ExpandableText(text: review.comment!),
           ],
           if (review.images.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -783,6 +776,52 @@ class _ErrorBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExpandableText extends StatefulWidget {
+  final String text;
+  const _ExpandableText({required this.text});
+
+  @override
+  State<_ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<_ExpandableText> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLong = widget.text.length > 120;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.text,
+          maxLines: _expanded ? null : 2,
+          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.textPrimary,
+            height: 1.4,
+          ),
+        ),
+        if (isLong) ...[
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Show less' : 'Show more',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
