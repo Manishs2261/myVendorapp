@@ -16,7 +16,8 @@ class AiImageRemoteSource {
   final Dio _dio;
   AiImageRemoteSource(this._dio);
 
-  Future<Uint8List> removeBackground(XFile imageFile) async {
+  Future<Uint8List> removeBackground(XFile imageFile,
+      {CancelToken? cancelToken}) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         imageFile.path,
@@ -24,14 +25,16 @@ class AiImageRemoteSource {
       ),
     });
 
-    // validateStatus lets 503 through so we can inspect the body ourselves
-    // instead of Dio throwing a DioException before we can read it.
+    // validateStatus lets 503 through so we can inspect the body ourselves.
+    // Override receive timeout to 3 min — AI inference can be slow on cold start.
     final response = await _dio.post<List<int>>(
       '/vendor/ai/remove-background',
       data: formData,
+      cancelToken: cancelToken,
       options: Options(
         responseType: ResponseType.bytes,
         validateStatus: (status) => status != null && status < 600,
+        receiveTimeout: const Duration(seconds: 90),
       ),
     );
 

@@ -336,27 +336,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (picked == null) return;
       await _processPickedImages([picked]);
     } else {
-      final picked = await _picker.pickMultiImage();
-      if (picked.isEmpty) return;
-      await _processPickedImages(picked);
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+      await _processPickedImages([picked]);
     }
   }
 
   Future<void> _processPickedImages(List<XFile> picked) async {
+    if (picked.isEmpty || !mounted) return;
+
+    // Ask once — apply the same processing choice to every picked image.
+    final choice = await showDialog<ImageProcessingChoice>(
+      context: context,
+      builder: (_) => const ImageProcessingDialog(),
+    );
+    if (choice == null || !mounted) return;
+
     for (final raw in picked) {
       if (_selectedImages.length >= 10) break;
       if (!mounted) break;
 
-      final choice = await showDialog<ImageProcessingChoice>(
-        context: context,
-        builder: (_) => const ImageProcessingDialog(),
-      );
-      if (choice == null) continue;
-      if (!mounted) break;
-
       XFile? finalImage;
       if (choice == ImageProcessingChoice.removeBackground) {
-        // Reset notifier so AiPreviewScreen starts fresh each time.
         ref.read(aiImageNotifierProvider.notifier).reset();
         if (!mounted) break;
         finalImage = await context.push<XFile>(RouteNames.aiPreview, extra: raw);
