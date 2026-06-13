@@ -13,9 +13,21 @@ class AuthRemoteSource {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> register(Map<String, dynamic> body) async {
-    final response = await _dio.post('/auth/register/vendor', data: body);
+  Future<Map<String, dynamic>> initiateRegister(Map<String, dynamic> body) async {
+    final response = await _dio.post('/auth/register/vendor/initiate', data: body);
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> completeRegister(String email, String otp) async {
+    final response = await _dio.post(
+      '/auth/register/vendor/complete',
+      data: {'email': email, 'otp': otp},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> resendRegisterOtp(String email) async {
+    await _dio.post('/auth/register/vendor/resend', data: {'email': email});
   }
 
   Future<Map<String, dynamic>> getMe() async {

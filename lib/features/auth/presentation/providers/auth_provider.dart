@@ -56,22 +56,10 @@ class AuthNotifier extends _$AuthNotifier {
     });
   }
 
-  Future<void> register({
-    required String businessName,
-    required String email,
-    required String password,
-    required String phone,
-  }) async {
+  Future<void> completeRegistration(String email, String otp) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await ref.read(authRepositoryProvider).register(
-            RegisterRequest(
-              businessName: businessName,
-              email: email,
-              password: password,
-              phone: phone,
-            ),
-          );
+      await ref.read(authRepositoryProvider).completeRegistration(email, otp);
       final user = await ref.read(authRepositoryProvider).getMe();
       _saveFcmTokenSilently();
       return user;

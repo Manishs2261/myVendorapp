@@ -40,9 +40,19 @@ class AuthRepository implements IAuthRepository {
   }
 
   @override
-  Future<void> register(RegisterRequest request) async {
+  Future<String> initiateRegistration(RegisterRequest request) async {
     try {
-      final data = await _remote.register(request.toJson());
+      final data = await _remote.initiateRegister(request.toJson());
+      return data['message'] as String? ?? 'OTP sent to your email';
+    } on DioException catch (e) {
+      _unwrapDio(e);
+    }
+  }
+
+  @override
+  Future<void> completeRegistration(String email, String otp) async {
+    try {
+      final data = await _remote.completeRegister(email, otp);
       await _storage.saveTokens(
         accessToken: data['access_token'] as String,
         refreshToken: data['refresh_token'] as String,

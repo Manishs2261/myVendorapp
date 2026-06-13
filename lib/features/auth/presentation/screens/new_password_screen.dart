@@ -1,62 +1,179 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_assets.dart';
-import '../providers/auth_provider.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/cyber_glow_background.dart';
 import '../../../../shared/widgets/glass_card.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class NewPasswordScreen extends StatefulWidget {
+  final String email;
+
+  const NewPasswordScreen({
+    super.key,
+    required this.email,
+  });
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<NewPasswordScreen> createState() => _NewPasswordScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _NewPasswordScreenState extends State<NewPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _confirmPassCtrl = TextEditingController();
+  
   bool _obscurePass = true;
+  bool _obscureConfirmPass = true;
+  bool _isLoading = false;
+  bool _isPassMinLength = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passCtrl.addListener(() {
+      final isMin = _passCtrl.text.length >= 8;
+      if (isMin != _isPassMinLength) {
+        setState(() => _isPassMinLength = isMin);
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
     _passCtrl.dispose();
+    _confirmPassCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    await ref
-        .read(authNotifierProvider.notifier)
-        .login(_emailCtrl.text.trim(), _passCtrl.text);
+
+    setState(() => _isLoading = true);
+
+    // Simulate reset password API call
+    Future.delayed(const Duration(seconds: 15.0 ~/ 10.0), () {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showSuccessDialog();
+    });
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: GlassCard(
+              blur: 20,
+              opacity: 0.08,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.primary.withOpacity(0.25), width: 1.5),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Checkmark animated icon
+                  Center(
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary.withOpacity(0.1),
+                        border: Border.all(color: AppColors.primary, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.primary,
+                        size: 40,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Success!',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Your password has been reset successfully. You can now sign in with your new password.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Action button
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 16,
+                          spreadRadius: -2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        // Dismiss dialog
+                        Navigator.pop(context);
+                        // Navigate back to Login screen (clearing stack)
+                        context.go(RouteNames.login);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primaryLight,
+                            ],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Sign In Now',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
     final theme = Theme.of(context);
-
-    ref.listen(authNotifierProvider, (_, next) {
-      if (next.valueOrNull != null) context.go(RouteNames.dashboard);
-      if (next.hasError) {
-        final msg = next.error.toString();
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(msg.isNotEmpty ? msg : 'Login failed. Please try again.'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-      }
-    });
 
     return CyberGlowBackground(
       child: SafeArea(
@@ -67,24 +184,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-                // Logo with premium glow
+                const SizedBox(height: 12),
+                // Premium Back button
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary,
+                      size: 20,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.04),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.white.withOpacity(0.08)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Logo with glow
                 Center(
                   child: Container(
-                    width: 90,
-                    height: 90,
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primary.withOpacity(0.35),
                           blurRadius: 32,
-                          spreadRadius: 4,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(20),
                       child: Image.asset(
                         AppAssets.playstoreIcon,
                         fit: BoxFit.cover,
@@ -92,8 +229,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                // App name
+                const SizedBox(height: 16),
                 Text(
                   'My Shop',
                   textAlign: TextAlign.center,
@@ -105,16 +241,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'By Where is my shops.',
+                  'Reset your password',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMuted,
                     letterSpacing: 1.2,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
                 
-                // Form glass card
+                // Glass Card
                 GlassCard(
                   child: Form(
                     key: _formKey,
@@ -122,14 +258,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Welcome back',
+                          'New Password',
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
-                          'Sign in to your account',
+                          'Create a strong new password for your account.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textMuted,
                             fontSize: 13,
@@ -137,53 +273,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 28),
                         
-                        // Email input
-                        TextFormField(
-                          controller: _emailCtrl,
-                          keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8)),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.02),
-                            prefixIcon: const Icon(
-                              Icons.email_outlined,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.error),
-                            ),
-                            focusedErrorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-                            ),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Email is required';
-                            if (!v.contains('@')) return 'Enter a valid email';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Password input
+                        // New Password Input Field
                         TextFormField(
                           controller: _passCtrl,
                           obscureText: _obscurePass,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: 'New Password',
                             labelStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8)),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.02),
@@ -221,34 +317,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) return 'Password is required';
-                            if (v.length < 6) return 'Minimum 6 characters';
+                            if (v.length < 8) return 'Password must be at least 8 characters';
                             return null;
                           },
                         ),
+                        const SizedBox(height: 16),
                         
-                        // Forgot Password Link
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => context.push(RouteNames.forgotPassword),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        // Confirm Password Input Field
+                        TextFormField(
+                          controller: _confirmPassCtrl,
+                          obscureText: _obscureConfirmPass,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Confirm Password',
+                            labelStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8)),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.02),
+                            prefixIcon: const Icon(
+                              Icons.lock_outline_rounded,
+                              color: AppColors.primary,
+                              size: 20,
                             ),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPass
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textMuted,
+                                size: 20,
                               ),
+                              onPressed: () => setState(() => _obscureConfirmPass = !_obscureConfirmPass),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.error),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
                             ),
                           ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Confirm your password';
+                            if (v != _passCtrl.text) return 'Passwords do not match';
+                            return null;
+                          },
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                         
-                        // Glowing Sign In Button
+                        // Dynamic password requirement note
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _isPassMinLength ? AppColors.success : AppColors.textMuted.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Use at least 8 characters',
+                              style: TextStyle(
+                                color: _isPassMinLength ? AppColors.success : AppColors.textMuted.withOpacity(0.8),
+                                fontSize: 12.5,
+                                fontWeight: _isPassMinLength ? FontWeight.w500 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        
+                        // Glowing Gradient Button
                         Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
@@ -262,7 +411,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
                           ),
                           child: InkWell(
-                            onTap: authState.isLoading ? null : _submit,
+                            onTap: _isLoading ? null : _submit,
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
                               height: 50,
@@ -276,7 +425,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: authState.isLoading
+                                child: _isLoading
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
@@ -286,7 +435,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         ),
                                       )
                                     : const Text(
-                                        'Sign In',
+                                        'Reset Password',
                                         style: TextStyle(
                                           color: Colors.black,
                                           fontSize: 15,
@@ -298,55 +447,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Divider
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'or',
-                        style: TextStyle(
-                          color: AppColors.textMuted.withOpacity(0.6),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                
-                // Outlined/Glassmorphic Create Account Button
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.02),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: InkWell(
-                      onTap: () => context.push(RouteNames.register),
-                      child: const Center(
-                        child: Text(
-                          'Create an Account',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),

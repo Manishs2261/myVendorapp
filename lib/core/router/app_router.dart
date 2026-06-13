@@ -5,6 +5,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/verify_code_screen.dart';
+import '../../features/auth/presentation/screens/new_password_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/onboarding/presentation/providers/onboarding_provider.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
@@ -51,18 +54,24 @@ GoRouter appRouter(Ref ref) {
       final authLoading = authState.isLoading;
       final onboardingLoading = onboardingState.isLoading;
 
+      final goingToSplash = loc == RouteNames.splash;
+      final goingToOnboarding = loc == RouteNames.onboarding;
+      final goingToAuth = loc == RouteNames.login ||
+          loc == RouteNames.register ||
+          loc == RouteNames.forgotPassword ||
+          loc == RouteNames.verifyCode ||
+          loc == RouteNames.newPassword;
+
       // Stay on splash while either state is loading
       if (authLoading || onboardingLoading) {
-        return loc == RouteNames.splash ? null : RouteNames.splash;
+        if (goingToAuth || goingToOnboarding) {
+          return null;
+        }
+        return goingToSplash ? null : RouteNames.splash;
       }
 
       final loggedIn = authState.valueOrNull != null;
       final seenOnboarding = onboardingState.valueOrNull ?? false;
-
-      final goingToSplash = loc == RouteNames.splash;
-      final goingToOnboarding = loc == RouteNames.onboarding;
-      final goingToAuth =
-          loc == RouteNames.login || loc == RouteNames.register;
 
       // First-time user: must see onboarding
       if (!seenOnboarding && !goingToOnboarding && !goingToSplash) {
@@ -97,6 +106,18 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: RouteNames.register,
         builder: (_, _) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.forgotPassword,
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.verifyCode,
+        builder: (_, state) => VerifyCodeScreen(email: state.extra as String? ?? ''),
+      ),
+      GoRoute(
+        path: RouteNames.newPassword,
+        builder: (_, state) => NewPasswordScreen(email: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: RouteNames.aiPreview,

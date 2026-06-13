@@ -55,7 +55,7 @@ class DioClient {
           handler.next(
             DioException(
               requestOptions: err.requestOptions,
-              error: const UnauthorizedException(),
+              error: UnauthorizedException(message),
               response: err.response,
               type: err.type,
             ),
