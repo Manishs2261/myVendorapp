@@ -117,7 +117,7 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: RouteNames.newPassword,
-        builder: (_, state) => NewPasswordScreen(email: state.extra as String? ?? ''),
+        builder: (_, state) => NewPasswordScreen(resetToken: state.extra as String? ?? ''),
       ),
       GoRoute(
         path: RouteNames.aiPreview,
