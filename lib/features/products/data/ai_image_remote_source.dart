@@ -28,7 +28,7 @@ class AiImageRemoteSource {
     // validateStatus lets 503 through so we can inspect the body ourselves.
     // Override receive timeout to 3 min — AI inference can be slow on cold start.
     final response = await _dio.post<List<int>>(
-      '/vendor/ai/remove-background',
+      '/m/vendor/ai/remove-background',
       data: formData,
       cancelToken: cancelToken,
       options: Options(

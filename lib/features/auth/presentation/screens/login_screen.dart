@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/providers/core_providers.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_assets.dart';
@@ -20,6 +21,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscurePass = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final storage = ref.read(secureStorageProvider);
+    final email = await storage.read('remember_email');
+    final password = await storage.read('remember_password');
+    final rememberMeStr = await storage.read('remember_me');
+    if (rememberMeStr == 'true' && email != null && password != null) {
+      if (mounted) {
+        setState(() {
+          _emailCtrl.text = email;
+          _passCtrl.text = password;
+          _rememberMe = true;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -30,6 +54,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    final storage = ref.read(secureStorageProvider);
+    if (_rememberMe) {
+      await storage.write(key: 'remember_email', value: _emailCtrl.text.trim());
+      await storage.write(key: 'remember_password', value: _passCtrl.text);
+      await storage.write(key: 'remember_me', value: 'true');
+    } else {
+      await storage.delete('remember_email');
+      await storage.delete('remember_password');
+      await storage.delete('remember_me');
+    }
+
     await ref
         .read(authNotifierProvider.notifier)
         .login(_emailCtrl.text.trim(), _passCtrl.text);
@@ -225,26 +261,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 12),
                         
-                        // Forgot Password Link
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => context.push(RouteNames.forgotPassword),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _rememberMe,
+                                    activeColor: AppColors.primary,
+                                    checkColor: Colors.black,
+                                    side: BorderSide(
+                                      color: Colors.white.withOpacity(0.4),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    onChanged: (val) {
+                                      setState(() => _rememberMe = val ?? false);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _rememberMe = !_rememberMe);
+                                  },
+                                  child: const Text(
+                                    'Remember me',
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                            TextButton(
+                              onPressed: () => context.push(RouteNames.forgotPassword),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 20),
                         

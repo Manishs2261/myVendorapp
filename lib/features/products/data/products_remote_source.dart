@@ -23,7 +23,7 @@ class ProductsRemoteSource {
     int? maxStock,
   }) async {
     final response = await _dio.get(
-      '/vendor/products',
+      '/m/vendor/products',
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -44,17 +44,17 @@ class ProductsRemoteSource {
   }
 
   Future<Map<String, dynamic>> publishDraft(int id) async {
-    final response = await _dio.post('/vendor/products/$id/publish');
+    final response = await _dio.post('/m/vendor/products/$id/publish');
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> getProduct(int id) async {
-    final response = await _dio.get('/vendor/products/$id');
+    final response = await _dio.get('/m/vendor/products/$id');
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> createProduct(Map<String, dynamic> body) async {
-    final response = await _dio.post('/vendor/products', data: body);
+    final response = await _dio.post('/m/vendor/products', data: body);
     return response.data as Map<String, dynamic>;
   }
 
@@ -87,7 +87,7 @@ class ProductsRemoteSource {
     }
 
     final response = await _dio.post(
-      '/vendor/products',
+      '/m/vendor/products',
       data: formData,
       options: Options(
         contentType: 'multipart/form-data; boundary=${formData.boundary}',
@@ -98,7 +98,7 @@ class ProductsRemoteSource {
 
   Future<Map<String, dynamic>> updateProduct(
       int id, Map<String, dynamic> body) async {
-    final response = await _dio.put('/vendor/products/$id', data: body);
+    final response = await _dio.put('/m/vendor/products/$id', data: body);
     return response.data as Map<String, dynamic>;
   }
 
@@ -132,7 +132,7 @@ class ProductsRemoteSource {
     }
 
     final response = await _dio.put(
-      '/vendor/products/$id',
+      '/m/vendor/products/$id',
       data: formData,
       options: Options(
         contentType: 'multipart/form-data; boundary=${formData.boundary}',
@@ -141,7 +141,7 @@ class ProductsRemoteSource {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteProduct(int id) => _dio.delete('/vendor/products/$id');
+  Future<void> deleteProduct(int id) => _dio.delete('/m/vendor/products/$id');
 
   Future<List<dynamic>> getCategories() async {
     final response = await _dio.get('/public/categories');
@@ -149,6 +149,6 @@ class ProductsRemoteSource {
   }
 
   Future<void> requestSponsorship(int productId) async {
-    await _dio.post('/vendor/products/$productId/sponsor-request');
+    await _dio.post('/m/vendor/products/$productId/sponsor-request');
   }
 }

@@ -6,7 +6,7 @@ class OrdersRemoteSource {
 
   Future<Map<String, dynamic>> getOrders({int page = 1, String? status}) async {
     final response = await _dio.get(
-      '/vendor/orders',
+      '/m/vendor/orders',
       queryParameters: {
         'page': page,
         'limit': 20,
@@ -17,13 +17,13 @@ class OrdersRemoteSource {
   }
 
   Future<Map<String, dynamic>> getOrder(int id) async {
-    final response = await _dio.get('/vendor/orders/$id');
+    final response = await _dio.get('/m/vendor/orders/$id');
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> updateStatus(int id, String status) async {
     final response = await _dio.put(
-      '/vendor/orders/$id/status',
+      '/m/vendor/orders/$id/status',
       data: {'status': status},
     );
     return response.data as Map<String, dynamic>;
