@@ -148,9 +148,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _existingImageUrls.addAll(p.imageUrls);
     _existingVideoUrl = p.videoUrl;
     for (final e in p.specifications.entries) {
+      final keyCtrl = TextEditingController(text: e.key);
+      final valCtrl = TextEditingController(text: e.value);
+      keyCtrl.addListener(_markDirty);
+      valCtrl.addListener(_markDirty);
       _specs.add((
-        key: TextEditingController(text: e.key),
-        value: TextEditingController(text: e.value),
+        key: keyCtrl,
+        value: valCtrl,
       ));
     }
     final knownHexes = _colorSwatches.map((s) => s.$1).toSet();
@@ -234,7 +238,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       final form = _buildForm(isDraft: true);
       Product result;
       if (_effectiveDraftId != null) {
-        result = await repo.updateProduct(_effectiveDraftId!, form);
+        if (_selectedImages.isNotEmpty || _selectedVideo != null) {
+          result = await repo.updateProductMultipart(
+            id: _effectiveDraftId!,
+            form: form,
+            images: _selectedImages,
+            video: _selectedVideo,
+          );
+        } else {
+          result = await repo.updateProduct(_effectiveDraftId!, form);
+        }
       } else {
         result = await repo.createProductMultipart(
           form: form,
@@ -244,7 +257,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         if (mounted) setState(() => _currentDraftId = result.id);
       }
       if (mounted) {
-        setState(() => _hasUnsavedChanges = false);
+        setState(() {
+          _hasUnsavedChanges = false;
+          _existingImageUrls.clear();
+          _existingImageUrls.addAll(result.imageUrls);
+          _selectedImages.clear();
+          _selectedVideo = null;
+          if (result.videoUrl != null) {
+            _existingVideoUrl = result.videoUrl;
+          }
+        });
         if (!silent) _showSnack('Draft saved!');
       }
     } catch (e) {
@@ -403,10 +425,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _showSnack('Maximum of 30 specifications allowed');
       return;
     }
-    setState(() => _specs.add((
-          key: TextEditingController(),
-          value: TextEditingController(),
-        )));
+    final keyCtrl = TextEditingController();
+    final valCtrl = TextEditingController();
+    keyCtrl.addListener(_markDirty);
+    valCtrl.addListener(_markDirty);
+    setState(() {
+      _specs.add((
+        key: keyCtrl,
+        value: valCtrl,
+      ));
+      _hasUnsavedChanges = true;
+    });
   }
 
   void _removeSpec(int index) {
@@ -414,6 +443,112 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _specs[index].value.dispose();
     setState(() => _specs.removeAt(index));
   }
+
+  void _showBulkSpecPasteDialog() {
+    final textCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bulk Paste Specifications'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Paste specifications copy-pasted from spreadsheets or documents. Use one key-value pair per line.',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: textCtrl,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                hintText: 'Storage\t128GB\nBattery: 8000mAh\n...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = textCtrl.text.trim();
+              if (text.isNotEmpty) {
+                _parseAndAddBulkSpecs(text);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _parseAndAddBulkSpecs(String text) {
+    final lines = text.split('\n');
+    int addedCount = 0;
+    bool reachedLimit = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (_specs.length >= 30) {
+        reachedLimit = true;
+        break;
+      }
+
+      String key = '';
+      String value = '';
+
+      if (trimmed.contains('\t')) {
+        final idx = trimmed.indexOf('\t');
+        key = trimmed.substring(0, idx).trim();
+        value = trimmed.substring(idx + 1).trim();
+      } else if (trimmed.contains(':')) {
+        final idx = trimmed.indexOf(':');
+        key = trimmed.substring(0, idx).trim();
+        value = trimmed.substring(idx + 1).trim();
+      } else if (trimmed.contains('=')) {
+        final idx = trimmed.indexOf('=');
+        key = trimmed.substring(0, idx).trim();
+        value = trimmed.substring(idx + 1).trim();
+      } else {
+        key = trimmed;
+      }
+
+      if (key.length > 100) key = key.substring(0, 100);
+      if (value.length > 200) value = value.substring(0, 200);
+
+      final keyCtrl = TextEditingController(text: key);
+      final valCtrl = TextEditingController(text: value);
+      keyCtrl.addListener(_markDirty);
+      valCtrl.addListener(_markDirty);
+
+      setState(() {
+        _specs.add((
+          key: keyCtrl,
+          value: valCtrl,
+        ));
+      });
+      addedCount++;
+    }
+
+    if (addedCount > 0) {
+      setState(() => _hasUnsavedChanges = true);
+      _showSnack('Imported $addedCount specifications');
+    }
+    if (reachedLimit) {
+      _showSnack('Maximum of 30 specifications allowed');
+    }
+  }
+
+
 
   // ---------------------------------------------------------------------------
   // Tag helpers
@@ -486,7 +621,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
 
       if (_isEditing) {
-        await repo.updateProduct(widget.initialProduct!.id, form);
+        if (_selectedImages.isNotEmpty || _selectedVideo != null) {
+          await repo.updateProductMultipart(
+            id: widget.initialProduct!.id,
+            form: form,
+            images: _selectedImages,
+            video: _selectedVideo,
+          );
+        } else {
+          await repo.updateProduct(widget.initialProduct!.id, form);
+        }
         ref.invalidate(productDetailProvider(widget.initialProduct!.id));
       } else {
         await repo.createProductMultipart(
@@ -801,7 +945,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Widget _buildImageGrid() {
     const tileSize = 90.0;
     final totalCount = _existingImageUrls.length + _selectedImages.length;
-    final canAdd = !_isEditing && totalCount < 10;
+    final canAdd = totalCount < 10;
 
     return Wrap(
       spacing: 8,
@@ -1037,10 +1181,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Widget _buildSpecificationsSection() {
     return _SectionCard(
       title: 'Specifications',
-      trailing: TextButton.icon(
-        onPressed: _addSpec,
-        icon: const Icon(Icons.add, size: 16),
-        label: const Text('+ Add Row'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton.icon(
+            onPressed: _showBulkSpecPasteDialog,
+            icon: const Icon(Icons.paste, size: 16),
+            label: const Text('Bulk Paste'),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: _addSpec,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Row'),
+          ),
+        ],
       ),
       child: _specs.isEmpty
           ? const Padding(
@@ -1065,7 +1220,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           controller: row.key,
                           label: 'Key',
                           hint: 'e.g. Material',
-                          maxLength: 30,
+                          maxLength: 100,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              if (row.value.text.trim().isNotEmpty) {
+                                return 'Key is required';
+                              }
+                            } else if (v.trim().length > 100) {
+                              return 'Key cannot exceed 100 characters';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1074,7 +1239,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           controller: row.value,
                           label: 'Value',
                           hint: 'e.g. Cotton',
-                          maxLength: 30,
+                          maxLength: 200,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              if (row.key.text.trim().isNotEmpty) {
+                                return 'Value is required';
+                              }
+                            } else if (v.trim().length > 200) {
+                              return 'Value cannot exceed 200 characters';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                       IconButton(

@@ -10,8 +10,13 @@ import '../../domain/product_models.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final VoidCallback? onTap;
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +26,9 @@ class ProductCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () =>
-            context.push(RouteNames.productDetailPath(product.id.toString())),
+        onTap: onTap ??
+            () => context.push(
+                RouteNames.productDetailPath(product.id.toString())),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(

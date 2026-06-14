@@ -6,23 +6,21 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 class AiImageService {
-  // Resize before sending to AI — U2Net doesn't need 4K.
-  // PNG is lossless: zero quality degradation, only pixel dimensions are reduced.
-  // Shorter side is capped at ~1024 px to keep PNG file size under the 10 MB limit.
+  // Resize and compress before sending to AI — U2Net internally downsamples to
+  // 320×320 for inference, so JPEG at quality 92 is visually identical to lossless
+  // PNG from the AI's perspective while being ~10× smaller (150–400 KB vs 1–3 MB).
   Future<XFile> compressForUpload(XFile file) async {
     final bytes = await file.readAsBytes();
-    final resized = await FlutterImageCompress.compressWithList(
+    final compressed = await FlutterImageCompress.compressWithList(
       bytes,
       minWidth: 1024,
       minHeight: 1024,
-      quality: 85, // for PNG: controls zlib compression speed, not visual quality
-      format: CompressFormat.png,
+      quality: 92,
+      format: CompressFormat.jpeg,
     );
-    if (resized.isEmpty || resized.length >= bytes.length) {
-      return file;
-    }
+    if (compressed.isEmpty || compressed.length >= bytes.length) return file;
     return _saveToTemp(
-        resized, '${p.basenameWithoutExtension(file.name)}_upload.png');
+        compressed, '${p.basenameWithoutExtension(file.name)}_upload.jpg');
   }
 
   // Wrap raw bytes (e.g. PNG from backend) as a temp XFile.

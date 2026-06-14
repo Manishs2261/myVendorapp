@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 
 enum ImageProcessingChoice { removeBackground, crop, skip }
 
@@ -10,17 +11,21 @@ class ImageProcessingDialog extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return AlertDialog(
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Text(
         'Process Image',
-        style: TextStyle(fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             'How would you like to process this image?',
-            style: TextStyle(color: Colors.black54),
+            style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
           _OptionTile(
@@ -76,7 +81,7 @@ class _OptionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -96,14 +101,16 @@ class _OptionTile extends StatelessWidget {
                 children: [
                   Text(title,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14)),
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
                   Text(subtitle,
                       style: const TextStyle(
-                          color: Colors.black45, fontSize: 12)),
+                          color: AppColors.textMuted, fontSize: 12)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.black26),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted),
           ],
         ),
       ),

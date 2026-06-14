@@ -79,6 +79,21 @@ class ProductsRepository implements IProductsRepository {
     return parseJson('Product', data, Product.fromJson);
   }
 
+  Future<Product> updateProductMultipart({
+    required int id,
+    required ProductForm form,
+    required List<XFile> images,
+    XFile? video,
+  }) async {
+    final data = await _remote.updateProductMultipart(
+      id: id,
+      data: form.toJson(),
+      images: images,
+      video: video,
+    );
+    return parseJson('Product', data, Product.fromJson);
+  }
+
   @override
   Future<void> deleteProduct(int id) => _remote.deleteProduct(id);
 

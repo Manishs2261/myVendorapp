@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../../../core/services/fcm_service.dart';
 import '../../data/auth_remote_source.dart';
@@ -38,8 +39,12 @@ class AuthNotifier extends _$AuthNotifier {
       final user = await ref.read(authRepositoryProvider).getMe();
       _saveFcmTokenSilently();
       return user;
-    } catch (_) {
-      await ref.read(authRepositoryProvider).logout();
+    } catch (e) {
+      if (e is UnauthorizedException) {
+        await ref.read(authRepositoryProvider).logout();
+      }
+      // Network or transient errors: keep tokens intact so the next
+      // successful launch auto-logs the user back in without re-entering credentials.
       return null;
     }
   }

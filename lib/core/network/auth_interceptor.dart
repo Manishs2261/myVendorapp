@@ -68,8 +68,16 @@ class AuthInterceptor extends Interceptor {
           pending.handler.next(err);
         }
       }
-    } catch (_) {
-      await _storage.clearAll();
+    } catch (e) {
+      // Only clear tokens on genuine auth failure (invalid/expired refresh token).
+      // Network errors and timeouts must not wipe tokens — user is just offline.
+      final bool isAuthFailure = e is UnauthorizedException ||
+          (e is DioException &&
+              (e.response?.statusCode == 401 ||
+                  e.response?.statusCode == 403));
+      if (isAuthFailure) {
+        await _storage.clearAll();
+      }
       for (final pending in _pendingRequests) {
         pending.handler.next(err);
       }

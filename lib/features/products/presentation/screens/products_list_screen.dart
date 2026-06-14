@@ -257,12 +257,18 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
           IconButton(
             icon: const Icon(Icons.edit_note),
             tooltip: 'View Drafts',
-            onPressed: () => context.push(RouteNames.drafts),
+            onPressed: () async {
+              await context.push(RouteNames.drafts);
+              _loadPage(1);
+            },
           ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add Product',
-            onPressed: () => context.push(RouteNames.addProduct),
+            onPressed: () async {
+              await context.push(RouteNames.addProduct);
+              _loadPage(1);
+            },
           ),
         ],
       ),
@@ -369,7 +375,14 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
           if (i < _products.length) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: ProductCard(product: _products[i]),
+              child: ProductCard(
+                product: _products[i],
+                onTap: () async {
+                  await context.push(
+                      RouteNames.productDetailPath(_products[i].id.toString()));
+                  _loadPage(1);
+                },
+              ),
             );
           }
           // Bottom indicator
