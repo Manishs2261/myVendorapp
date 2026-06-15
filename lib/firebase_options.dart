@@ -26,7 +26,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCOTmy_q9Zw2KlKeEk69Vq9dVSAmQ5k6_c',
-    appId: '1:821841558401:android:c1a8eb35c244c8ec110680',
+    appId: '1:821841558401:android:38c6e0e08ac31f48110680',
     messagingSenderId: '821841558401',
     projectId: 'my-shop-31d1a',
     storageBucket: 'my-shop-31d1a.firebasestorage.app',
@@ -42,7 +42,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'my-shop-31d1a.firebasestorage.app',
     androidClientId: '821841558401-pes77usoeb1geaj91bgr0v5rjq1uings.apps.googleusercontent.com',
     iosClientId: '821841558401-dk1p42dh829qki0u9pnnoh1e1d3hbd9j.apps.googleusercontent.com',
-    iosBundleId: 'com.example.myvendorapp',
+    iosBundleId: 'com.whereismyshops.vendorapp',
   );
 
   static const FirebaseOptions web = FirebaseOptions(

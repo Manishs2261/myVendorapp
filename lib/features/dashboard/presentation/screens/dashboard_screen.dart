@@ -2,10 +2,13 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/last_updated_chip.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../shop/presentation/providers/shop_provider.dart';
 import '../../domain/shop_analytics_models.dart';
 import '../providers/shop_analytics_provider.dart';
 
@@ -19,8 +22,16 @@ class DashboardScreen extends ConsumerWidget {
     final analyticsAsync = ref.watch(shopAnalyticsNotifierProvider);
     final period = ref.watch(shopAnalyticsPeriodProvider);
     final notifier = ref.read(shopAnalyticsNotifierProvider.notifier);
+    final shopAsync = ref.watch(shopNotifierProvider);
 
     return Scaffold(
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: shopAsync.maybeWhen(
+        data: (shop) => shop.completionScore < 100
+            ? _ShopCompletionBanner(score: shop.completionScore)
+            : null,
+        orElse: () => null,
+      ),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu),
@@ -56,7 +67,7 @@ class DashboardScreen extends ConsumerWidget {
         data: (analytics) => RefreshIndicator(
           onRefresh: () => notifier.refresh(),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                   children: [
                     // Sponsored banner
                     if (analytics.sponsored != null) ...[
@@ -98,6 +109,80 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
             ),
+    );
+  }
+}
+
+// ─── Shop Completion Banner ───────────────────────────────────────────────────
+
+class _ShopCompletionBanner extends StatelessWidget {
+  final int score;
+  const _ShopCompletionBanner({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = score >= 50 ? Colors.orange : Colors.red;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        color: color.withValues(alpha: 0.12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => context.go(RouteNames.shop),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.storefront_outlined, color: color, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Complete your shop profile',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: score / 100,
+                          minHeight: 5,
+                          backgroundColor: Colors.white24,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '$score%',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

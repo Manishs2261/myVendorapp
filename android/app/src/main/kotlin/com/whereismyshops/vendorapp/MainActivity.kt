@@ -1,4 +1,4 @@
-package com.example.myvendorapp
+package com.whereismyshops.vendorapp
 
 import io.flutter.embedding.android.FlutterActivity
 

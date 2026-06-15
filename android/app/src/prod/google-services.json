@@ -39,10 +39,10 @@
               "client_type": 3
             },
             {
-              "client_id": "821841558401-fdmbo8t0e1drfd702niu5g7a4rauud1s.apps.googleusercontent.com",
+              "client_id": "821841558401-dk1p42dh829qki0u9pnnoh1e1d3hbd9j.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.myusesrapp"
+                "bundle_id": "com.example.myvendorapp"
               }
             }
           ]
@@ -75,10 +75,46 @@
               "client_type": 3
             },
             {
-              "client_id": "821841558401-fdmbo8t0e1drfd702niu5g7a4rauud1s.apps.googleusercontent.com",
+              "client_id": "821841558401-dk1p42dh829qki0u9pnnoh1e1d3hbd9j.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.myusesrapp"
+                "bundle_id": "com.example.myvendorapp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:821841558401:android:38c6e0e08ac31f48110680",
+        "android_client_info": {
+          "package_name": "com.whereismyshops.vendorapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "821841558401-5k04f1qdp6h5caehu8bofad1buub552j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOTmy_q9Zw2KlKeEk69Vq9dVSAmQ5k6_c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "821841558401-5k04f1qdp6h5caehu8bofad1buub552j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "821841558401-dk1p42dh829qki0u9pnnoh1e1d3hbd9j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.myvendorapp"
               }
             }
           ]

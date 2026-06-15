@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:821841558401:android:c1a8eb35c244c8ec110680",
         "android_client_info": {
-          "package_name": "com.example.myvendorapp.stage"
+          "package_name": "com.whereismyshops.vendorapp.stage"
         }
       },
       "oauth_client": [

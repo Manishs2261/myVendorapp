@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../providers/shop_provider.dart';
 import '../../domain/shop_models.dart';
 
@@ -48,6 +51,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
   GoogleMapController? _mapController;
   LatLng? _markerPosition;
 
+  bool _initialized = false;
   bool _saving = false;
   bool _locationLoading = false;
 
@@ -92,13 +96,15 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
     _latCtrl.text = shop.latitude?.toString() ?? '';
     _lngCtrl.text = shop.longitude?.toString() ?? '';
     _businessType = _businessTypes.firstWhere(
-      (t) => t.toLowerCase() == (shop.businessType ?? '').toLowerCase(),
+      (t) => t.toUpperCase().replaceAll(' & ', '_').replaceAll(' ', '_') ==
+          (shop.businessType ?? '').toUpperCase(),
       orElse: () => _businessTypes.first,
     );
     _idType = shop.idType;
     if (shop.latitude != null && shop.longitude != null) {
       _markerPosition = LatLng(shop.latitude!, shop.longitude!);
     }
+    _initialized = true;
   }
 
   Future<void> _saveChanges() async {
@@ -141,7 +147,26 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showSnack('Location services are disabled.');
+        if (!mounted) return;
+        final open = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Location Services Disabled'),
+            content: const Text(
+                'Please enable location services to pick your shop location.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+        if (open == true) await Geolocator.openLocationSettings();
         return;
       }
       LocationPermission permission = await Geolocator.checkPermission();
@@ -240,7 +265,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
     final shopAsync = ref.watch(shopNotifierProvider);
 
     ref.listen(shopNotifierProvider, (prev, next) {
-      if (next.hasValue && prev?.valueOrNull != next.valueOrNull) {
+      if (!_initialized && next.hasValue) {
         _populateControllers(next.value!);
       }
     });
@@ -293,11 +318,15 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
         data: (shop) {
           // Populate on first load
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_nameCtrl.text.isEmpty) _populateControllers(shop);
+            if (!_initialized) _populateControllers(shop);
           });
+          final totalProducts = ref
+              .watch(dashboardNotifierProvider)
+              .valueOrNull
+              ?.totalProducts ?? 0;
           return Column(
             children: [
-              _ProfileCompletionBar(shop: shop),
+              _ProfileCompletionBar(shop: shop, totalProducts: totalProducts),
               Expanded(
                 child: Form(
                   key: _formKey,
@@ -360,19 +389,37 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
 
 class _ProfileCompletionBar extends StatelessWidget {
   final Shop shop;
-  const _ProfileCompletionBar({required this.shop});
+  final int totalProducts;
+  const _ProfileCompletionBar({required this.shop, required this.totalProducts});
 
   @override
   Widget build(BuildContext context) {
     final score = shop.completionScore;
+    final scoreColor = score >= 80
+        ? Colors.green
+        : score >= 50
+            ? Colors.orange
+            : Colors.red;
+
+    // Matches backend ShopResponse._compute_fields (13 shop fields) + product check
     final checks = [
-      ('Business name', shop.businessName.isNotEmpty),
-      ('Shop name', shop.shopName != null && shop.shopName!.isNotEmpty),
-      ('Logo', shop.logoUrl != null),
-      ('Address', shop.address != null && shop.address!.isNotEmpty),
-      ('Contact', shop.contactPhone != null || shop.contactEmail != null),
-      ('ID document', shop.idDocumentUrl != null),
+      ('Shop name',    shop.shopName != null && shop.shopName!.isNotEmpty),
+      ('Description',  shop.description != null && shop.description!.isNotEmpty),
+      ('Address',      shop.address != null && shop.address!.isNotEmpty),
+      ('City',         shop.city != null && shop.city!.isNotEmpty),
+      ('State',        shop.state != null && shop.state!.isNotEmpty),
+      ('Pincode',      shop.pincode != null && shop.pincode!.isNotEmpty),
+      ('Logo',         shop.logoUrl != null),
+      ('Phone',        shop.contactPhone != null && shop.contactPhone!.isNotEmpty),
+      ('Email',        shop.contactEmail != null && shop.contactEmail!.isNotEmpty),
+      ('Latitude',     shop.latitude != null),
+      ('Longitude',    shop.longitude != null),
+      ('ID document',  shop.idDocumentUrl != null),
+      ('Gallery',      shop.gallery.isNotEmpty),
+      ('5+ products',  totalProducts >= 5),
     ];
+
+    final pending = checks.where((c) => !c.$2).toList();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -382,18 +429,22 @@ class _ProfileCompletionBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('Profile Completion', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const Text('Profile Completion',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(width: 8),
               Text('$score%',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: score >= 80
-                        ? Colors.green
-                        : score >= 50
-                            ? Colors.orange
-                            : Colors.red,
-                  )),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: scoreColor)),
+              if (pending.isNotEmpty) ...[
+                const Spacer(),
+                Text('${pending.length} left',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: scoreColor,
+                        fontWeight: FontWeight.w500)),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -403,11 +454,7 @@ class _ProfileCompletionBar extends StatelessWidget {
               value: score / 100,
               minHeight: 6,
               backgroundColor: Colors.white12,
-              color: score >= 80
-                  ? Colors.green
-                  : score >= 50
-                      ? Colors.orange
-                      : Colors.red,
+              color: scoreColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -434,15 +481,20 @@ class _CheckChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-            size: 13,
-            color: done ? Colors.green : Colors.white38),
+        Icon(
+          done ? Icons.check_circle_outline : Icons.cancel_outlined,
+          size: 13,
+          color: done ? Colors.green : Colors.orange,
+        ),
         const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-              fontSize: 11,
-              color: done ? Colors.white70 : Colors.white38,
-            )),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: done ? Colors.white70 : Colors.orange,
+            fontWeight: done ? FontWeight.normal : FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -498,13 +550,13 @@ class _DetailsTab extends StatelessWidget {
         _SectionCard(
           title: 'Shop Information',
           children: [
-            _field(nameCtrl, 'Shop Name', required: true),
+            _field(nameCtrl, 'Shop Name', required: true, maxLength: 100),
             const SizedBox(height: 12),
-            _field(descCtrl, 'Description', maxLines: 4),
+            _field(descCtrl, 'Description', maxLines: 4, maxLength: 1000),
             const SizedBox(height: 12),
             _dropdown(context, 'Business Type', businessType, _businessTypes, onBusinessTypeChanged),
             const SizedBox(height: 12),
-            _field(gstCtrl, 'GST Number'),
+            _field(gstCtrl, 'GST Number', maxLength: 50),
             const SizedBox(height: 12),
             _dropdown(context, 'Identity Type', idType, _idTypes, onIdTypeChanged,
                 hint: 'Select Identity Type'),
@@ -516,16 +568,16 @@ class _DetailsTab extends StatelessWidget {
         _SectionCard(
           title: 'Address',
           children: [
-            _field(streetCtrl, 'Street Address', required: true),
+            _field(streetCtrl, 'Street Address', required: true, maxLength: 200),
             const SizedBox(height: 12),
             Row(children: [
-              Expanded(child: _field(cityCtrl, 'City', required: true)),
+              Expanded(child: _field(cityCtrl, 'City', required: true, maxLength: 20)),
               const SizedBox(width: 12),
               Expanded(child: _field(postalCtrl, 'Postal Code',
-                  required: true, keyboard: TextInputType.number)),
+                  required: true, maxLength: 8, keyboard: TextInputType.number)),
             ]),
             const SizedBox(height: 12),
-            _field(stateCtrl, 'State', required: true),
+            _field(stateCtrl, 'State', required: true, maxLength: 50),
           ],
         ),
         const SizedBox(height: 16),
@@ -533,13 +585,13 @@ class _DetailsTab extends StatelessWidget {
           title: 'Contact Details',
           children: [
             _fieldWithVerify(context, phoneCtrl, 'Phone Number',
-                keyboard: TextInputType.phone),
+                maxLength: 10, keyboard: TextInputType.phone),
             const SizedBox(height: 12),
             _fieldWithVerify(context, emailCtrl, 'Email',
-                keyboard: TextInputType.emailAddress),
+                maxLength: 100, keyboard: TextInputType.emailAddress),
             const SizedBox(height: 12),
             _field(whatsappCtrl, 'WhatsApp Number',
-                keyboard: TextInputType.phone),
+                maxLength: 10, keyboard: TextInputType.phone),
           ],
         ),
         const SizedBox(height: 24),
@@ -550,23 +602,39 @@ class _DetailsTab extends StatelessWidget {
   Widget _field(TextEditingController ctrl, String label,
       {bool required = false,
       int maxLines = 1,
+      int? maxLength,
       TextInputType keyboard = TextInputType.text}) {
     return TextFormField(
       controller: ctrl,
       maxLines: maxLines,
+      maxLength: maxLength,
       keyboardType: keyboard,
       decoration: InputDecoration(labelText: required ? '$label *' : label),
       validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? '$label is required' : null
-          : null,
+          ? (v) {
+              if (v == null || v.trim().isEmpty) {
+                return '$label is required';
+              }
+              if (maxLength != null && v.length > maxLength) {
+                return '$label cannot exceed $maxLength characters';
+              }
+              return null;
+            }
+          : (maxLength != null
+              ? (v) => (v != null && v.length > maxLength)
+                  ? '$label cannot exceed $maxLength characters'
+                  : null
+              : null),
     );
   }
 
   Widget _fieldWithVerify(BuildContext context, TextEditingController ctrl,
       String label,
-      {TextInputType keyboard = TextInputType.text}) {
+      {int? maxLength,
+      TextInputType keyboard = TextInputType.text}) {
     return TextFormField(
       controller: ctrl,
+      maxLength: maxLength,
       keyboardType: keyboard,
       decoration: InputDecoration(
         labelText: '$label *',
@@ -575,6 +643,15 @@ class _DetailsTab extends StatelessWidget {
           child: const Text('Verify', style: TextStyle(fontSize: 12)),
         ),
       ),
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) {
+          return '$label is required';
+        }
+        if (maxLength != null && v.length > maxLength) {
+          return '$label cannot exceed $maxLength characters';
+        }
+        return null;
+      },
     );
   }
 
@@ -836,7 +913,7 @@ class _LocationTab extends StatelessWidget {
                 ),
           children: [
             SizedBox(
-              height: 300,
+              height: 420,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: GoogleMap(
@@ -858,6 +935,11 @@ class _LocationTab extends StatelessWidget {
                   onTap: (latlng) => onMarkerDragEnd(latlng),
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: true,
+                  gestureRecognizers: {
+                    Factory<OneSequenceGestureRecognizer>(
+                      () => EagerGestureRecognizer(),
+                    ),
+                  },
                 ),
               ),
             ),
@@ -937,7 +1019,7 @@ class _SectionCard extends StatelessWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.w600, fontSize: 15)),
               const Spacer(),
-              ?titleSuffix,
+              if (titleSuffix != null) titleSuffix!,
             ],
           ),
           const SizedBox(height: 16),
