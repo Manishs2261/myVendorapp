@@ -49,7 +49,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: analyticsAsync.when(
+      body: shopAsync.when(
         loading: () => ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: const [
@@ -62,53 +62,113 @@ class DashboardScreen extends ConsumerWidget {
         ),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => notifier.refresh(),
+          onRetry: () => ref.invalidate(shopNotifierProvider),
         ),
-        data: (analytics) => RefreshIndicator(
-          onRefresh: () => notifier.refresh(),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                  children: [
-                    // Sponsored banner
-                    if (analytics.sponsored != null) ...[
-                      _SponsoredBanner(info: analytics.sponsored!),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Analytics header + period picker
-                    _AnalyticsHeader(
-                      metrics: analytics.metrics,
-                      period: period,
-                      onPeriodChanged: (p) =>
-                          ref.read(shopAnalyticsPeriodProvider.notifier).state = p,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // 7 metric cards
-                    _MetricsGrid(metrics: analytics.metrics),
+        data: (shop) {
+          if (!shop.verified) {
+            return _NotVerifiedView(
+              onGoToProfile: () => context.go(RouteNames.shop),
+            );
+          }
+          return analyticsAsync.when(
+            loading: () => ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: const [
+                ShimmerMetricsGrid(),
+                SizedBox(height: 16),
+                ShimmerCard(height: 200),
+                SizedBox(height: 16),
+                ShimmerCard(height: 160),
+              ],
+            ),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => notifier.refresh(),
+            ),
+            data: (analytics) => RefreshIndicator(
+              onRefresh: () => notifier.refresh(),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                children: [
+                  if (analytics.sponsored != null) ...[
+                    _SponsoredBanner(info: analytics.sponsored!),
                     const SizedBox(height: 16),
-
-                    // Daily Traffic
-                    _DailyTrafficCard(points: analytics.dailyTraffic),
-                    const SizedBox(height: 16),
-
-                    // Product Performance
-                    _ProductPerformanceCard(products: analytics.productPerformance),
-                    const SizedBox(height: 16),
-
-                    // Customer Actions
-                    _CustomerActionsCard(actions: analytics.customerActions),
-                    const SizedBox(height: 16),
-
-                    _SearchKeywordsCard(keywords: analytics.searchKeywords),
-                    const SizedBox(height: 16),
-
-                    // Smart Insights
-                    _SmartInsightsCard(insights: analytics.insights),
                   ],
-                ),
+                  _AnalyticsHeader(
+                    metrics: analytics.metrics,
+                    period: period,
+                    onPeriodChanged: (p) =>
+                        ref.read(shopAnalyticsPeriodProvider.notifier).state = p,
+                  ),
+                  const SizedBox(height: 12),
+                  _MetricsGrid(metrics: analytics.metrics),
+                  const SizedBox(height: 16),
+                  _DailyTrafficCard(points: analytics.dailyTraffic),
+                  const SizedBox(height: 16),
+                  _ProductPerformanceCard(products: analytics.productPerformance),
+                  const SizedBox(height: 16),
+                  _CustomerActionsCard(actions: analytics.customerActions),
+                  const SizedBox(height: 16),
+                  _SearchKeywordsCard(keywords: analytics.searchKeywords),
+                  const SizedBox(height: 16),
+                  _SmartInsightsCard(insights: analytics.insights),
+                ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─── Not Verified View ───────────────────────────────────────────────────────
+
+class _NotVerifiedView extends StatelessWidget {
+  final VoidCallback onGoToProfile;
+  const _NotVerifiedView({required this.onGoToProfile});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.storefront_outlined,
+                  size: 56, color: Colors.orange),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Shop Not Verified',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your shop is under review. Analytics and dashboard data will be visible once your shop is verified by the admin.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: onGoToProfile,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Complete Shop Profile'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

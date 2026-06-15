@@ -260,9 +260,34 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
     }
   }
 
+  bool _isProfileComplete(Shop shop, int totalProducts) {
+    final checks = [
+      shop.shopName != null && shop.shopName!.isNotEmpty,
+      shop.description != null && shop.description!.isNotEmpty,
+      shop.address != null && shop.address!.isNotEmpty,
+      shop.city != null && shop.city!.isNotEmpty,
+      shop.state != null && shop.state!.isNotEmpty,
+      shop.pincode != null && shop.pincode!.isNotEmpty,
+      shop.logoUrl != null,
+      shop.contactPhone != null && shop.contactPhone!.isNotEmpty,
+      shop.contactEmail != null && shop.contactEmail!.isNotEmpty,
+      shop.latitude != null,
+      shop.longitude != null,
+      shop.idDocumentUrl != null,
+      shop.gallery.isNotEmpty,
+      totalProducts >= 5,
+    ];
+    return checks.every((c) => c);
+  }
+
   @override
   Widget build(BuildContext context) {
     final shopAsync = ref.watch(shopNotifierProvider);
+    final totalProducts =
+        ref.watch(dashboardNotifierProvider).valueOrNull?.totalProducts ?? 0;
+
+    final shop = shopAsync.valueOrNull;
+    final isComplete = shop != null && _isProfileComplete(shop, totalProducts);
 
     ref.listen(shopNotifierProvider, (prev, next) {
       if (!_initialized && next.hasValue) {
@@ -285,10 +310,13 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.verified_outlined, size: 16),
-            label: const Text('Verify Now'),
+          Tooltip(
+            message: isComplete ? '' : 'Complete your profile 100% to verify',
+            child: TextButton.icon(
+              onPressed: isComplete ? () {} : null,
+              icon: const Icon(Icons.verified_outlined, size: 16),
+              label: const Text('Verify Now'),
+            ),
           ),
           const SizedBox(width: 4),
           FilledButton.icon(
@@ -394,14 +422,6 @@ class _ProfileCompletionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final score = shop.completionScore;
-    final scoreColor = score >= 80
-        ? Colors.green
-        : score >= 50
-            ? Colors.orange
-            : Colors.red;
-
-    // Matches backend ShopResponse._compute_fields (13 shop fields) + product check
     final checks = [
       ('Shop name',    shop.shopName != null && shop.shopName!.isNotEmpty),
       ('Description',  shop.description != null && shop.description!.isNotEmpty),
@@ -419,7 +439,15 @@ class _ProfileCompletionBar extends StatelessWidget {
       ('5+ products',  totalProducts >= 5),
     ];
 
+    final filled = checks.where((c) => c.$2).length;
+    final score = (filled / checks.length * 100).round();
     final pending = checks.where((c) => !c.$2).toList();
+
+    final scoreColor = score >= 80
+        ? Colors.green
+        : score >= 50
+            ? Colors.orange
+            : Colors.red;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
