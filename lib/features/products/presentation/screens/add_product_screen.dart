@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -270,7 +271,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         if (!silent) _showSnack('Draft saved!');
       }
     } catch (e) {
-      if (mounted && !silent) _showSnack('Failed to save draft: $e');
+      if (mounted && !silent) _showSnack(_extractError(e));
     } finally {
       if (mounted && !silent) setState(() => _draftSaving = false);
     }
@@ -300,7 +301,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString());
+      if (mounted) _showSnack(_extractError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -647,7 +648,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString());
+      if (mounted) _showSnack(_extractError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -655,6 +656,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   void _showSnack(String msg) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(msg)));
+
+  String _extractError(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['detail'] != null) return data['detail'].toString();
+    }
+    return e.toString();
+  }
 
   // ---------------------------------------------------------------------------
   // Build
