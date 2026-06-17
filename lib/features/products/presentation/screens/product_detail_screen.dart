@@ -7,6 +7,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../data/products_repository.dart';
 import '../../domain/product_models.dart';
 import '../providers/products_provider.dart';
 
@@ -21,6 +23,48 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _currentImage = 0;
+  bool _deleting = false;
+
+  Future<void> _confirmDelete(Product product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text(
+          'Delete "${product.name}"? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
+      await repo.deleteProduct(product.id);
+      if (!mounted) return;
+      ref.invalidate(productsNotifierProvider);
+      ref.invalidate(dashboardNotifierProvider);
+      context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +83,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         data: (product) => _ProductView(
           product: product,
           currentImage: _currentImage,
+          deleting: _deleting,
           onImageChanged: (i) => setState(() => _currentImage = i),
+          onDelete: () => _confirmDelete(product),
         ),
       ),
     );
@@ -49,12 +95,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 class _ProductView extends StatelessWidget {
   final Product product;
   final int currentImage;
+  final bool deleting;
   final ValueChanged<int> onImageChanged;
+  final VoidCallback onDelete;
 
   const _ProductView({
     required this.product,
     required this.currentImage,
+    required this.deleting,
     required this.onImageChanged,
+    required this.onDelete,
   });
 
   @override
@@ -75,6 +125,20 @@ class _ProductView extends StatelessWidget {
               extra: product,
             ),
           ),
+          deleting
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: 'Delete',
+                  onPressed: onDelete,
+                ),
         ],
       ),
       body: CustomScrollView(

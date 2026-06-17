@@ -10,6 +10,7 @@ import '../../../../shared/widgets/last_updated_chip.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../shop/presentation/providers/shop_provider.dart';
 import '../../domain/shop_analytics_models.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/shop_analytics_provider.dart';
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -23,13 +24,19 @@ class DashboardScreen extends ConsumerWidget {
     final period = ref.watch(shopAnalyticsPeriodProvider);
     final notifier = ref.read(shopAnalyticsNotifierProvider.notifier);
     final shopAsync = ref.watch(shopNotifierProvider);
+    final dashboardAsync = ref.watch(dashboardNotifierProvider);
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: shopAsync.maybeWhen(
-        data: (shop) => shop.completionScore < 100
-            ? _ShopCompletionBanner(score: shop.completionScore)
-            : null,
+        data: (shop) {
+          final totalProducts = dashboardAsync.valueOrNull?.totalProducts ?? 0;
+          final profileFilled = (shop.completionScore * 13 / 100).round();
+          final effectiveScore = ((profileFilled + (totalProducts >= 5 ? 1 : 0)) / 14 * 100).round();
+          return effectiveScore < 100
+              ? _ShopCompletionBanner(score: effectiveScore)
+              : null;
+        },
         orElse: () => null,
       ),
       appBar: AppBar(
@@ -66,7 +73,12 @@ class DashboardScreen extends ConsumerWidget {
         ),
         data: (shop) {
           if (!shop.verified) {
+            final totalProducts = dashboardAsync.valueOrNull?.totalProducts ?? 0;
+            final profileFilled = (shop.completionScore * 13 / 100).round();
+            final effectiveScore = ((profileFilled + (totalProducts >= 5 ? 1 : 0)) / 14 * 100).round();
             return _NotVerifiedView(
+              completionScore: effectiveScore,
+              verificationRequested: shop.verificationRequested,
               onGoToProfile: () => context.go(RouteNames.shop),
             );
           }
@@ -125,12 +137,72 @@ class DashboardScreen extends ConsumerWidget {
 // ─── Not Verified View ───────────────────────────────────────────────────────
 
 class _NotVerifiedView extends StatelessWidget {
+  final int completionScore;
+  final bool verificationRequested;
   final VoidCallback onGoToProfile;
-  const _NotVerifiedView({required this.onGoToProfile});
+  const _NotVerifiedView({
+    required this.completionScore,
+    required this.verificationRequested,
+    required this.onGoToProfile,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isComplete = completionScore >= 100;
+
+    // State 3: verification submitted, waiting for admin
+    if (verificationRequested) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.hourglass_top_rounded,
+                  size: 56,
+                  color: Colors.amber,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Under Review',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your shop is being reviewed by our team. We\'ll notify you once it\'s approved.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Chip(
+                avatar: const Icon(Icons.schedule, size: 16, color: Colors.amber),
+                label: const Text('Pending Approval'),
+                backgroundColor: Colors.amber.withValues(alpha: 0.12),
+                side: BorderSide(color: Colors.amber.withValues(alpha: 0.4)),
+                labelStyle: const TextStyle(
+                  color: Colors.amber,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // State 1 & 2: not yet requested
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -140,31 +212,66 @@ class _NotVerifiedView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
+                color: isComplete
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.storefront_outlined,
-                  size: 56, color: Colors.orange),
+              child: Icon(
+                isComplete
+                    ? Icons.verified_outlined
+                    : Icons.storefront_outlined,
+                size: 56,
+                color: isComplete ? Colors.green : Colors.orange,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
-              'Shop Not Verified',
+              isComplete ? 'Ready for Verification!' : 'Shop Not Verified',
               style: theme.textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             Text(
-              'Your shop is under review. Analytics and dashboard data will be visible once your shop is verified by the admin.',
+              isComplete
+                  ? 'Your profile is 100% complete. Go to your shop profile to submit for admin verification.'
+                  : 'Complete your shop profile to get verified. Analytics and dashboard data will be visible once verified.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (!isComplete) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: completionScore / 100,
+                  minHeight: 6,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$completionScore% complete',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 28),
             FilledButton.icon(
               onPressed: onGoToProfile,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Complete Shop Profile'),
+              style: isComplete
+                  ? FilledButton.styleFrom(backgroundColor: Colors.green)
+                  : null,
+              icon: Icon(
+                isComplete ? Icons.verified_outlined : Icons.edit_outlined,
+                size: 18,
+              ),
+              label: Text(isComplete ? 'Verify Now' : 'Complete Shop Profile'),
             ),
           ],
         ),

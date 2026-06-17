@@ -140,6 +140,17 @@ class ShopNotifier extends _$ShopNotifier {
       return shop.copyWith(idDocumentUrl: url);
     });
   }
+
+  Future<void> requestVerification() async {
+    final updated = await (ref.read(shopRepositoryProvider) as ShopRepository)
+        .requestVerification();
+    await ref.read(cacheServiceProvider).put(
+          CacheKeys.shopProfile,
+          updated,
+          toJson: (d) => d.toJson(),
+        );
+    state = AsyncValue.data(updated);
+  }
 }
 
 @riverpod

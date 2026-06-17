@@ -52,6 +52,7 @@ class DashboardOverview {
   final int activeProducts;
   final int inactiveProducts;
   final int totalViews;
+  final int completionScore;
   final List<RecentProduct> recentProducts;
 
   const DashboardOverview({
@@ -62,6 +63,7 @@ class DashboardOverview {
     required this.activeProducts,
     required this.inactiveProducts,
     required this.totalViews,
+    this.completionScore = 0,
     required this.recentProducts,
   });
 
@@ -74,6 +76,7 @@ class DashboardOverview {
       activeProducts: json['active_products'] as int? ?? 0,
       inactiveProducts: json['inactive_products'] as int? ?? 0,
       totalViews: json['total_views'] as int? ?? 0,
+      completionScore: json['completion_score'] as int? ?? 0,
       recentProducts: (json['recent_products'] as List?)
               ?.map((e) => RecentProduct.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -89,6 +92,7 @@ class DashboardOverview {
         'active_products': activeProducts,
         'inactive_products': inactiveProducts,
         'total_views': totalViews,
+        'completion_score': completionScore,
         'recent_products': recentProducts.map((p) => p.toJson()).toList(),
       };
 }

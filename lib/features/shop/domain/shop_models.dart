@@ -21,6 +21,7 @@ class Shop {
   final List<String> gallery;
   final String status;
   final bool verified;
+  final bool verificationRequested;
   final int completionScore;
   final String? openingTime;
   final String? closingTime;
@@ -49,6 +50,7 @@ class Shop {
     this.gallery = const [],
     required this.status,
     required this.verified,
+    this.verificationRequested = false,
     this.completionScore = 0,
     this.openingTime,
     this.closingTime,
@@ -85,6 +87,7 @@ class Shop {
       gallery: parseStringList(json['gallery']),
       status: json['status'] as String? ?? 'pending',
       verified: json['verified'] as bool? ?? json['is_verified'] as bool? ?? false,
+      verificationRequested: json['verification_requested'] as bool? ?? false,
       completionScore: json['completion_score'] as int? ?? 0,
       openingTime: json['opening_time'] as String?,
       closingTime: json['closing_time'] as String?,
@@ -115,6 +118,7 @@ class Shop {
         'gallery': gallery,
         'status': status,
         'verified': verified,
+        'verification_requested': verificationRequested,
         'completion_score': completionScore,
         if (openingTime != null) 'opening_time': openingTime,
         if (closingTime != null) 'closing_time': closingTime,
@@ -150,6 +154,7 @@ class Shop {
       gallery: gallery ?? this.gallery,
       status: status,
       verified: verified,
+      verificationRequested: verificationRequested,
       completionScore: completionScore,
       openingTime: openingTime,
       closingTime: closingTime,

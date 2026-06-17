@@ -15,6 +15,11 @@ class ShopRemoteSource {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> requestVerification() async {
+    final response = await _dio.post('/m/vendor/shop/request-verification');
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> getReviewStats() async {
     final response = await _dio.get('/m/vendor/shop-reviews/stats');
     return response.data as Map<String, dynamic>;

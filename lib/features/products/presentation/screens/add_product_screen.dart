@@ -13,6 +13,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../data/products_repository.dart';
 import '../../domain/product_models.dart';
 import '../providers/ai_image_provider.dart';
@@ -298,6 +299,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (mounted) {
         _showSnack(_isEditing ? 'Product updated!' : 'Product published!');
         ref.invalidate(productsNotifierProvider);
+        ref.invalidate(dashboardNotifierProvider);
         context.pop();
       }
     } catch (e) {
@@ -645,6 +647,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         setState(() => _hasUnsavedChanges = false);
         _showSnack(_isEditing ? 'Product updated!' : 'Product added successfully');
         ref.invalidate(productsNotifierProvider);
+        ref.invalidate(dashboardNotifierProvider);
         context.pop();
       }
     } catch (e) {
@@ -1661,6 +1664,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         child: Text('Active')),
                     DropdownMenuItem(
                         value: 'inactive', child: Text('Inactive')),
+                    DropdownMenuItem(
+                        value: 'draft', child: Text('Draft')),
                   ],
                   onChanged: (v) => setState(() => _status = v!),
                 ),

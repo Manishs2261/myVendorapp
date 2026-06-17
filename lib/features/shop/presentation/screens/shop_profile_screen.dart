@@ -53,6 +53,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
 
   bool _initialized = false;
   bool _saving = false;
+  bool _verifying = false;
   bool _locationLoading = false;
 
   static const _businessTypes = ['Retail', 'Wholesale', 'Service', 'Food & Beverage', 'Other'];
@@ -105,6 +106,27 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
       _markerPosition = LatLng(shop.latitude!, shop.longitude!);
     }
     _initialized = true;
+  }
+
+  Future<void> _requestVerification() async {
+    setState(() => _verifying = true);
+    try {
+      await ref.read(shopNotifierProvider.notifier).requestVerification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verification request submitted! We\'ll review your shop soon.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e is Exception ? e.toString().replaceFirst('Exception: ', '') : e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _verifying = false);
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -310,14 +332,31 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
           ],
         ),
         actions: [
-          Tooltip(
-            message: isComplete ? '' : 'Complete your profile 100% to verify',
-            child: TextButton.icon(
-              onPressed: isComplete ? () {} : null,
-              icon: const Icon(Icons.verified_outlined, size: 16),
-              label: const Text('Verify Now'),
+          if (shop != null && shop.verificationRequested && !shop.verified)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Chip(
+                avatar: const Icon(Icons.hourglass_top_rounded, size: 14, color: Colors.orange),
+                label: const Text('Under Review', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                backgroundColor: Colors.orange.withValues(alpha: 0.12),
+                side: BorderSide(color: Colors.orange.withValues(alpha: 0.4)),
+                padding: EdgeInsets.zero,
+              ),
+            )
+          else
+            Tooltip(
+              message: isComplete ? '' : 'Complete your profile 100% to verify',
+              child: _verifying
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : TextButton.icon(
+                      onPressed: isComplete ? _requestVerification : null,
+                      icon: const Icon(Icons.verified_outlined, size: 16),
+                      label: const Text('Verify Now'),
+                    ),
             ),
-          ),
           const SizedBox(width: 4),
           FilledButton.icon(
             onPressed: _saving ? null : _saveChanges,

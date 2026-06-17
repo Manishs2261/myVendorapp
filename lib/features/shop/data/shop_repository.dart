@@ -21,6 +21,11 @@ class ShopRepository implements IShopRepository {
     return parseJson('Shop', updated, Shop.fromJson);
   }
 
+  Future<Shop> requestVerification() async {
+    final data = await _remote.requestVerification();
+    return parseJson('Shop', data, Shop.fromJson);
+  }
+
   @override
   Future<String> uploadLogo(XFile file) => _remote.uploadLogo(file);
 
