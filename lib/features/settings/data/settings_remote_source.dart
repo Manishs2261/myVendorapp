@@ -11,8 +11,11 @@ class SettingsRemoteSource {
     });
   }
 
-  Future<void> sendEmailOtp() async {
-    await _dio.post('/auth/verify/email/send');
+  Future<void> sendEmailOtp({String? email}) async {
+    await _dio.post(
+      '/auth/verify/email/send',
+      data: email != null ? {'email': email} : null,
+    );
   }
 
   Future<void> confirmEmailOtp(String otp) async {

@@ -332,7 +332,18 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
           ],
         ),
         actions: [
-          if (shop != null && shop.verificationRequested && !shop.verified)
+          if (shop != null && shop.verified)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Chip(
+                avatar: const Icon(Icons.verified_rounded, size: 14, color: Colors.green),
+                label: const Text('Verified', style: TextStyle(fontSize: 12, color: Colors.green)),
+                backgroundColor: Colors.green.withValues(alpha: 0.12),
+                side: BorderSide(color: Colors.green.withValues(alpha: 0.4)),
+                padding: EdgeInsets.zero,
+              ),
+            )
+          else if (shop != null && shop.verificationRequested)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Chip(

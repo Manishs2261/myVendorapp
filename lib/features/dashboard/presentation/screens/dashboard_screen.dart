@@ -33,7 +33,7 @@ class DashboardScreen extends ConsumerWidget {
           final totalProducts = dashboardAsync.valueOrNull?.totalProducts ?? 0;
           final profileFilled = (shop.completionScore * 13 / 100).round();
           final effectiveScore = ((profileFilled + (totalProducts >= 5 ? 1 : 0)) / 14 * 100).round();
-          return effectiveScore < 100
+          return (effectiveScore < 100 && !shop.verified)
               ? _ShopCompletionBanner(score: effectiveScore)
               : null;
         },

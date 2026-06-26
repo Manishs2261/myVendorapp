@@ -55,7 +55,7 @@ class _LuminaVendorAppState extends ConsumerState<LuminaVendorApp> {
     super.initState();
     FcmService.onNewMessage = _onNewMessage;
     FcmService.onNotificationTap = _onNotificationTap;
-    // Handle notification tap when app was terminated
+// Handle notification tap when app was terminated            
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null && mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
