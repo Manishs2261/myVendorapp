@@ -37,25 +37,25 @@ Future<void> bootstrap(AppFlavor flavor) async {
         cacheServiceProvider.overrideWithValue(cacheService),
         offlineQueueProvider.overrideWithValue(offlineQueue),
       ],
-      child: const LuminaVendorApp(),
+      child: const MyShopVendorApp(),
     ),
   );
 }
 
-class LuminaVendorApp extends ConsumerStatefulWidget {
-  const LuminaVendorApp({super.key});
+class MyShopVendorApp extends ConsumerStatefulWidget {
+  const MyShopVendorApp({super.key});
 
   @override
-  ConsumerState<LuminaVendorApp> createState() => _LuminaVendorAppState();
+  ConsumerState<MyShopVendorApp> createState() => _MyShopVendorAppState();
 }
 
-class _LuminaVendorAppState extends ConsumerState<LuminaVendorApp> {
+class _MyShopVendorAppState extends ConsumerState<MyShopVendorApp> {
   @override
   void initState() {
     super.initState();
     FcmService.onNewMessage = _onNewMessage;
     FcmService.onNotificationTap = _onNotificationTap;
-// Handle notification tap when app was terminated            
+// Handle notification tap when app was terminated
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null && mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,7 +84,7 @@ class _LuminaVendorAppState extends ConsumerState<LuminaVendorApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
-      title: 'My Shop',
+      title: 'My Shop Seller',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,

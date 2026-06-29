@@ -96,3 +96,6 @@ For FCM to work on dev/stage, register the package names in Firebase Console →
 - Add Android app: `com.example.myvendorapp.stage`
 
 Then download the updated `google-services.json` and replace the files above.
+
+
+## dart run build_runner build --delete-conflicting-outputs

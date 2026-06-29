@@ -158,7 +158,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 FadeTransition(
                   opacity: _textOpacity,
                   child: Text(
-                    'My Shop',
+                    'My Shop Seller',
                     style: GoogleFonts.outfit(
                       fontSize: isTablet ? 40 : 30,
                       fontWeight: FontWeight.w700,

@@ -74,7 +74,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isInitiating = true);
     try {
       final request = RegisterRequest(
-        businessName: _nameCtrl.text.trim(),
+        userName: _nameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
         phone: _phoneCtrl.text.trim(),
@@ -216,7 +216,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'My Shop',
+                  'My Shop Seller',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -226,7 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _step == 1 ? 'Join as a Vendor' : 'Verify your email',
+                  _step == 1 ? 'Join as a Seller' : 'Verify your email',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMuted,

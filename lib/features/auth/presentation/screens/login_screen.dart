@@ -131,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 20),
                 // App name
                 Text(
-                  'My Shop',
+                  'My Shop Seller',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -178,11 +178,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: Colors.white),
+                          maxLength: 200,
                           decoration: InputDecoration(
                             labelText: 'Email',
-                            labelStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8)),
+                            labelStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.8)),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.02),
+                            fillColor: Colors.white.withValues(alpha: 0.02),
                             prefixIcon: const Icon(
                               Icons.email_outlined,
                               color: AppColors.primary,
@@ -218,11 +219,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _passCtrl,
                           obscureText: _obscurePass,
                           style: const TextStyle(color: Colors.white),
+                          maxLength: 100,
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            labelStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.8)),
+                            labelStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.8)),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.02),
+                            fillColor: Colors.white.withValues(alpha: 0.02),
                             prefixIcon: const Icon(
                               Icons.lock_outline_rounded,
                               color: AppColors.primary,
@@ -240,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -276,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     activeColor: AppColors.primary,
                                     checkColor: Colors.black,
                                     side: BorderSide(
-                                      color: Colors.white.withOpacity(0.4),
+                                      color: Colors.white.withValues(alpha: 0.4),
                                       width: 1.5,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -328,7 +330,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.primary.withValues(alpha: 0.3),
                                 blurRadius: 16,
                                 spreadRadius: -2,
                                 offset: const Offset(0, 4),
@@ -380,18 +382,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // Divider
                 Row(
                   children: [
-                    Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
+                    Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.08))),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'or',
                         style: TextStyle(
-                          color: AppColors.textMuted.withOpacity(0.6),
+                          color: AppColors.textMuted.withValues(alpha: 0.6),
                           fontSize: 13,
                         ),
                       ),
                     ),
-                    Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
+                    Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.08))),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -402,10 +404,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.02),
+                      color: Colors.white.withValues(alpha: 0.02),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         width: 1.2,
                       ),
                     ),

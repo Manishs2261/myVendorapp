@@ -8,21 +8,21 @@ class LoginRequest {
 }
 
 class RegisterRequest {
-  final String businessName;
+  final String userName;
   final String email;
   final String password;
   final String phone;
 
   const RegisterRequest({
-    required this.businessName,
+    required this.userName,
     required this.email,
     required this.password,
     required this.phone,
   });
 
   Map<String, dynamic> toJson() => {
-        'name': businessName,
-        'business_name': businessName,
+        'name': userName,
+        'business_name': userName,
         'email': email,
         'password': password,
         'phone': phone,

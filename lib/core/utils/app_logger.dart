@@ -6,7 +6,7 @@ class AppLogger {
       noBoxingByDefault: true,
       methodCount: 0,
       errorMethodCount: 3,
-      lineLength: 1000,
+      lineLength: 2000,
     ),
     level: Level.debug,
   );

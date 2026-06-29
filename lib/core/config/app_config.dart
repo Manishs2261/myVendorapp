@@ -8,6 +8,7 @@ class AppConfig {
   static void initialize(AppFlavor flavor) => _flavor = flavor;
 
   static String get apiBaseUrl => switch (_flavor) {
+       //    TODO change to url
         AppFlavor.dev => 'https://api.whereismyshops.com',
         AppFlavor.stage => 'https://api.whereismyshops.com',
         AppFlavor.prod => 'https://api.whereismyshops.com',
@@ -16,7 +17,7 @@ class AppConfig {
   static String get appName => switch (_flavor) {
         AppFlavor.dev => 'My Shop Dev',
         AppFlavor.stage => 'My Shop Stage',
-        AppFlavor.prod => 'My Shop',
+        AppFlavor.prod => 'My Shop Seller',
       };
 
   static bool get isProduction => _flavor == AppFlavor.prod;
