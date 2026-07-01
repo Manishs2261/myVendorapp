@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/notifications/presentation/providers/notifications_provider.dart';
 import '../../shared/widgets/offline_banner.dart';
 import '../router/route_names.dart';
+import '../theme/theme_provider.dart';
 import 'app_drawer.dart';
 
 class MainShell extends ConsumerWidget {
@@ -29,6 +30,7 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(isDarkModeProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _currentIndex(location);
     final colorScheme = Theme.of(context).colorScheme;

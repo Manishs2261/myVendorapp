@@ -8,6 +8,7 @@ import '../../../../core/cache/cache_keys.dart';
 import '../../../../core/providers/cache_providers.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/models/paginated_response.dart';
 import '../../../../shared/widgets/error_view.dart';
@@ -229,6 +230,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final inactiveAsync = ref.watch(inactiveCountProvider);
 
     return Scaffold(
@@ -295,11 +297,11 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: AppColors.border),
                 ),
               ),
             ),
@@ -398,7 +400,7 @@ class _ProductsListScreenState extends ConsumerState<ProductsListScreen> {
               child: Center(
                 child: Text(
                   'All $_total products loaded',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.textMuted, fontSize: 12),
                 ),
               ),
@@ -867,11 +869,11 @@ class _AdvancedTextField extends StatelessWidget {
           fillColor: AppColors.surface2,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
         ),
       );

@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/main_shell.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../providers/shop_provider.dart';
@@ -304,6 +305,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final shopAsync = ref.watch(shopNotifierProvider);
     final totalProducts =
         ref.watch(dashboardNotifierProvider).valueOrNull?.totalProducts ?? 0;

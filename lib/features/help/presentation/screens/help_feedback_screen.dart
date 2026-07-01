@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../domain/help_models.dart';
@@ -37,6 +38,7 @@ class _HelpFeedbackScreenState extends ConsumerState<HelpFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final listAsync = ref.watch(helpFeedbackListProvider(
       type: _typeFilter,
       status: _statusFilter,
@@ -47,10 +49,10 @@ class _HelpFeedbackScreenState extends ConsumerState<HelpFeedbackScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.textPrimary),
+          icon: Icon(Icons.menu, color: AppColors.textPrimary),
           onPressed: () => MainShell.scaffoldKey.currentState?.openDrawer(),
         ),
-        title: const Text(
+        title: Text(
           'Help & Feedback',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
@@ -218,7 +220,7 @@ class _FilterRow extends StatelessWidget {
     final hasFilter = typeFilter != null || statusFilter != null;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface2,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
@@ -245,7 +247,7 @@ class _FilterRow extends StatelessWidget {
                   border: Border.all(color: AppColors.border),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'Clear',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
@@ -282,12 +284,12 @@ class _FilterDropdown<T> extends StatelessWidget {
         child: DropdownButton<T>(
           value: value,
           dropdownColor: AppColors.surface,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 13,
             fontFamily: 'Outfit',
           ),
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted, size: 18),
+          icon: Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted, size: 18),
           isDense: true,
           items: items
               .map((e) => DropdownMenuItem<T>(
@@ -332,7 +334,7 @@ class _FeedbackCard extends StatelessWidget {
           ),
           title: Text(
             item.subject,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
               fontSize: 14,
@@ -353,7 +355,7 @@ class _FeedbackCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   _formatDate(item.createdAt),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -376,13 +378,13 @@ class _FeedbackCard extends StatelessWidget {
             ],
           ),
           children: [
-            const Divider(color: AppColors.border, height: 1),
+            Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 item.description,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 13,
                   height: 1.5,
@@ -423,7 +425,7 @@ class _FeedbackCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       item.adminResponse!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
                         height: 1.5,
@@ -487,9 +489,9 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.chat_bubble_outline, size: 48, color: AppColors.textDim),
+          Icon(Icons.chat_bubble_outline, size: 48, color: AppColors.textDim),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'No feedback submitted yet',
             style: TextStyle(
               color: AppColors.textMuted,
@@ -498,7 +500,7 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Report issues or suggest features to our team.',
             style: TextStyle(color: AppColors.textDim, fontSize: 13),
             textAlign: TextAlign.center,
@@ -584,7 +586,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'New Feedback',
                     style: TextStyle(
                       color: AppColors.textPrimary,
@@ -593,7 +595,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textMuted),
+                    icon: Icon(Icons.close, color: AppColors.textMuted),
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -603,7 +605,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               const SizedBox(height: 20),
 
               // Type selector
-              const Text(
+              Text(
                 'Type',
                 style: TextStyle(
                   color: AppColors.textMuted,
@@ -654,7 +656,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               const SizedBox(height: 20),
 
               // Priority selector
-              const Text(
+              Text(
                 'Priority',
                 style: TextStyle(
                   color: AppColors.textMuted,
@@ -699,7 +701,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               const SizedBox(height: 20),
 
               // Subject field
-              const Text(
+              Text(
                 'Subject',
                 style: TextStyle(
                   color: AppColors.textMuted,
@@ -711,7 +713,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               TextFormField(
                 controller: _subjectController,
                 maxLength: 300,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: _inputDecoration(
                   hint: 'Brief description of the issue or suggestion',
                 ),
@@ -724,7 +726,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               const SizedBox(height: 16),
 
               // Description field
-              const Text(
+              Text(
                 'Description',
                 style: TextStyle(
                   color: AppColors.textMuted,
@@ -736,7 +738,7 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
               TextFormField(
                 controller: _descController,
                 maxLines: 4,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: _inputDecoration(
                   hint: 'Describe in detail. For bugs, include steps to reproduce...',
                 ),
@@ -797,17 +799,17 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
 
   InputDecoration _inputDecoration({required String hint}) => InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textDim, fontSize: 13),
+        hintStyle: TextStyle(color: AppColors.textDim, fontSize: 13),
         filled: true,
         fillColor: AppColors.surface3,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -821,6 +823,6 @@ class _NewFeedbackSheetState extends ConsumerState<_NewFeedbackSheet> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        counterStyle: const TextStyle(color: AppColors.textDim, fontSize: 11),
+        counterStyle: TextStyle(color: AppColors.textDim, fontSize: 11),
       );
 }

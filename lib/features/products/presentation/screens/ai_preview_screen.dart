@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_view/photo_view.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../providers/ai_image_provider.dart';
 import '../widgets/checkerboard_bg.dart';
 
@@ -70,6 +71,7 @@ class _AiPreviewScreenState extends ConsumerState<AiPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final aiState = ref.watch(aiImageNotifierProvider);
     final progress = ref.watch(aiProgressProvider);
 
@@ -315,18 +317,18 @@ class _PremiumScannerLoadingState extends State<_PremiumScannerLoading>
           const SizedBox(height: 6),
           Text(
             widget.stage.isNotEmpty ? widget.stage : 'AI is processing your image',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           OutlinedButton(
             onPressed: widget.onCancel,
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: AppColors.border),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Cancel Processing', style: TextStyle(color: AppColors.textPrimary)),
+            child: Text('Cancel Processing', style: TextStyle(color: AppColors.textPrimary)),
           ),
           const SizedBox(height: 16),
         ],
@@ -398,7 +400,7 @@ class _ErrorView extends StatelessWidget {
               isModelLoading
                   ? 'AI model is warming up'
                   : 'Background removal failed',
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                   fontSize: 16),
@@ -409,7 +411,7 @@ class _ErrorView extends StatelessWidget {
               isModelLoading
                   ? 'The AI model is loading on the server. Please retry in ~30 seconds.'
                   : message,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -457,7 +459,7 @@ class _ImagePane extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -626,7 +628,7 @@ class _BottomBar extends StatelessWidget {
               label: const Text('Re-crop'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.border),
+                side: BorderSide(color: AppColors.border),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),

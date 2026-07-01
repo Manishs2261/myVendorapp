@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_assets.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/widgets/cyber_glow_background.dart';
@@ -155,6 +156,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final theme = Theme.of(context);
 
     return CyberGlowBackground(
@@ -171,7 +173,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
                   alignment: Alignment.centerLeft,
                   child: IconButton(
                     onPressed: () => context.pop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withValues(alpha: 0.04),
                       shape: RoundedRectangleBorder(

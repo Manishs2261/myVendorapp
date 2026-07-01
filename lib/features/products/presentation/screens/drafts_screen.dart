@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../data/products_repository.dart';
 import '../../domain/product_models.dart';
 import '../providers/products_provider.dart';
@@ -135,6 +136,7 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text('Drafts (${_drafts.length})'),
@@ -194,12 +196,12 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.edit_note, size: 64, color: AppColors.textMuted),
+          Icon(Icons.edit_note, size: 64, color: AppColors.textMuted),
           const SizedBox(height: 16),
           const Text('No drafts yet',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Start a product and tap "Save as Draft"\nto come back to it later.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textMuted),
@@ -368,6 +370,6 @@ class _DraftCard extends StatelessWidget {
 
   Widget _placeholder() => Container(
         color: AppColors.surface3,
-        child: const Icon(Icons.image_outlined, color: AppColors.textMuted, size: 24),
+        child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 24),
       );
 }

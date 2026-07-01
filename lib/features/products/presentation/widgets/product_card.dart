@@ -86,7 +86,7 @@ class ProductCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.inventory_2_outlined,
+                        Icon(Icons.inventory_2_outlined,
                             size: 13, color: AppColors.textMuted),
                         const SizedBox(width: 3),
                         Text(
@@ -142,7 +142,7 @@ class _ProductThumb extends StatelessWidget {
 
   Widget _placeholder() => Container(
         color: AppColors.surface3,
-        child: const Icon(Icons.image_outlined,
+        child: Icon(Icons.image_outlined,
             color: AppColors.textMuted, size: 28),
       );
 }

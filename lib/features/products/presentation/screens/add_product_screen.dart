@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
@@ -457,7 +458,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Paste specifications copy-pasted from spreadsheets or documents. Use one key-value pair per line.',
               style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
@@ -674,6 +675,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final pct = _completionPct;
     final progressColor = pct >= 80
         ? Colors.green
@@ -895,7 +897,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 .map((tag) => Chip(
                       label: Text(tag,
                           style:
-                              const TextStyle(color: AppColors.textPrimary)),
+                              TextStyle(color: AppColors.textPrimary)),
                       backgroundColor: AppColors.surface3,
                       deleteIconColor: AppColors.textMuted,
                       onDeleted: () =>
@@ -979,7 +981,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     width: tileSize,
                     height: tileSize,
                     color: AppColors.surface3,
-                    child: const Icon(Icons.broken_image_outlined,
+                    child: Icon(Icons.broken_image_outlined,
                         color: AppColors.textMuted),
                   ),
                 ),
@@ -1067,12 +1069,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 border: Border.all(
                     color: AppColors.border, style: BorderStyle.solid),
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_photo_alternate_outlined,
                       color: AppColors.textMuted),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text('Upload',
                       style: TextStyle(
                           color: AppColors.textMuted, fontSize: 11)),
@@ -1110,7 +1112,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               children: [
                 const Icon(Icons.videocam, color: AppColors.primary),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Product video uploaded',
                     style: TextStyle(color: AppColors.textPrimary),
@@ -1146,14 +1148,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 border: Border.all(color: AppColors.border),
               ),
               child: _selectedVideo == null
-                  ? const Column(
+                  ? Column(
                       children: [
                         Icon(Icons.videocam_outlined,
                             color: AppColors.textMuted),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text('Upload product video',
                             style: TextStyle(color: AppColors.primary)),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text('MP4, MOV · Max 30 MB',
                             style: TextStyle(
                                 color: AppColors.textMuted, fontSize: 12)),
@@ -1167,13 +1169,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         Expanded(
                           child: Text(
                             _selectedVideo!.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppColors.textPrimary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close,
+                          icon: Icon(Icons.close,
                               color: AppColors.textMuted),
                           onPressed: () =>
                               setState(() => _selectedVideo = null),
@@ -1210,8 +1212,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         ],
       ),
       child: _specs.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
                   'No specifications yet. Add one.',
@@ -1265,7 +1267,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline,
+                        icon: Icon(Icons.delete_outline,
                             color: AppColors.textMuted),
                         onPressed: () => _removeSpec(i),
                       ),
@@ -1483,7 +1485,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   decoration: InputDecoration(
                     hintText: 'Color name (e.g. Navy Blue)',
                     hintStyle:
-                        const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        TextStyle(color: AppColors.textMuted, fontSize: 13),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 10),
@@ -1492,12 +1494,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide:
-                          const BorderSide(color: AppColors.border),
+                          BorderSide(color: AppColors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide:
-                          const BorderSide(color: AppColors.border),
+                          BorderSide(color: AppColors.border),
                     ),
                   ),
                   style: const TextStyle(fontSize: 13),
@@ -1755,7 +1757,7 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -1765,7 +1767,7 @@ class _SectionCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.textMuted, fontSize: 12),
                       ),
                     ],

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../domain/shop_review_models.dart';
 import '../providers/shop_provider.dart';
@@ -122,6 +123,7 @@ class _ShopReviewsScreenState extends ConsumerState<ShopReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -157,7 +159,7 @@ class _ShopReviewsScreenState extends ConsumerState<ShopReviewsScreen> {
             else ...[
               Text(
                 '$_total total customer reviews',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textMuted,
                 ),
@@ -223,7 +225,7 @@ class _StatsCard extends StatelessWidget {
                   children: [
                     _AverageRatingPanel(stats: stats!),
                     const SizedBox(width: 20),
-                    const VerticalDivider(color: AppColors.border, width: 1),
+                    VerticalDivider(color: AppColors.border, width: 1),
                     const SizedBox(width: 20),
                     Expanded(child: _RatingBarsPanel(stats: stats!)),
                   ],
@@ -243,7 +245,7 @@ class _AverageRatingPanel extends StatelessWidget {
       children: [
         Text(
           stats.averageRating.toStringAsFixed(1),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 48,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -255,7 +257,7 @@ class _AverageRatingPanel extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           '${stats.totalReviews} reviews',
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
       ],
     );
@@ -301,7 +303,7 @@ class _RatingBar extends StatelessWidget {
       children: [
         Text(
           '$star',
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
         ),
         const SizedBox(width: 2),
         const Icon(Icons.star, size: 11, color: AppColors.warning),
@@ -323,7 +325,7 @@ class _RatingBar extends StatelessWidget {
           child: Text(
             '$count',
             textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
         ),
       ],
@@ -354,14 +356,14 @@ class _FilterRow extends StatelessWidget {
       children: [
         TextField(
           controller: searchCtrl,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Search reviewer name...',
-            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-            prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+            hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            prefixIcon: Icon(Icons.search, color: AppColors.textMuted, size: 20),
             suffixIcon: searchCtrl.text.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear, color: AppColors.textMuted, size: 18),
+                    icon: Icon(Icons.clear, color: AppColors.textMuted, size: 18),
                     onPressed: () => searchCtrl.clear(),
                   )
                 : null,
@@ -370,11 +372,11 @@ class _FilterRow extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(vertical: 10),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -458,8 +460,8 @@ class _DropdownChip<T> extends StatelessWidget {
         isExpanded: true,
         underline: const SizedBox.shrink(),
         dropdownColor: AppColors.surface2,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-        icon: const Icon(Icons.expand_more, color: AppColors.textMuted, size: 18),
+        style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+        icon: Icon(Icons.expand_more, color: AppColors.textMuted, size: 18),
         items: items,
         onChanged: onChanged,
       ),
@@ -497,7 +499,7 @@ class _ReviewCard extends StatelessWidget {
                   children: [
                     Text(
                       review.reviewerName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -510,14 +512,14 @@ class _ReviewCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           _formatDate(review.createdAt),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
                           ),
                         ),
                         if (review.updatedAt != null) ...[
                           const SizedBox(width: 6),
-                          const Text(
+                          Text(
                             'edited',
                             style: TextStyle(
                               fontSize: 10,
@@ -557,7 +559,7 @@ class _ReviewCard extends StatelessWidget {
                       width: 64,
                       height: 64,
                       color: AppColors.surface3,
-                      child: const Icon(Icons.broken_image_outlined,
+                      child: Icon(Icons.broken_image_outlined,
                           color: AppColors.textMuted, size: 24),
                     ),
                   ),
@@ -584,6 +586,7 @@ class _ReviewCard extends StatelessWidget {
                   ),
                 ],
               ),
+
             ),
           ],
         ],
@@ -669,11 +672,11 @@ class _HelpfulBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.thumb_up_outlined, size: 14, color: AppColors.textMuted),
+        Icon(Icons.thumb_up_outlined, size: 14, color: AppColors.textMuted),
         const SizedBox(width: 3),
         Text(
           '$count',
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
       ],
     );
@@ -709,7 +712,7 @@ class _PaginationRow extends StatelessWidget {
         ),
         Text(
           '$start–$end of $total',
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
         IconButton(
           onPressed: onNext,
@@ -726,13 +729,13 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
+        padding: const EdgeInsets.symmetric(vertical: 48),
         child: Column(
           children: [
             Icon(Icons.star_border_outlined, size: 48, color: AppColors.textDim),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               'No shop reviews yet',
               style: TextStyle(color: AppColors.textMuted, fontSize: 14),
@@ -801,7 +804,7 @@ class _ExpandableTextState extends State<_ExpandableText> {
           widget.text,
           maxLines: _expanded ? null : 2,
           overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             color: AppColors.textPrimary,
             height: 1.4,

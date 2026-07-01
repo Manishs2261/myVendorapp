@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../features/products/presentation/providers/products_provider.dart';
@@ -28,6 +29,7 @@ class _SponsorshipScreenState extends ConsumerState<SponsorshipScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final state = ref.watch(sponsorshipProvider);
 
     return Scaffold(
@@ -84,8 +86,8 @@ class _SponsorshipScreenState extends ConsumerState<SponsorshipScreen> {
                       ),
                       const SizedBox(height: 12),
                       if (state.plans.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
                             child: Text(
                               'No plans available',
@@ -569,7 +571,7 @@ class _PlanCard extends StatelessWidget {
                 ? OutlinedButton(
                     onPressed: null,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: AppColors.border),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
@@ -691,7 +693,7 @@ class _ApplicationTile extends StatelessWidget {
           // Date info
           Row(
             children: [
-              const Icon(Icons.calendar_today,
+              Icon(Icons.calendar_today,
                   size: 13, color: AppColors.textMuted),
               const SizedBox(width: 5),
               Expanded(
@@ -1017,7 +1019,7 @@ class _ApplySheetState extends ConsumerState<_ApplySheet> {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -1054,7 +1056,7 @@ class _ApplySheetState extends ConsumerState<_ApplySheet> {
                   ?.copyWith(color: AppColors.textMuted),
             ),
             const SizedBox(height: 20),
-            const Divider(color: AppColors.border, height: 1),
+            Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 20),
 
             // Location targeting
@@ -1242,7 +1244,7 @@ class _RemovableChip extends StatelessWidget {
           InkWell(
             onTap: onRemove,
             borderRadius: BorderRadius.circular(10),
-            child: const Icon(Icons.close,
+            child: Icon(Icons.close,
                 size: 14, color: AppColors.textMuted),
           ),
         ],

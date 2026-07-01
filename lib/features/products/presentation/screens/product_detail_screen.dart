@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/status_badge.dart';
@@ -68,6 +69,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final productAsync =
         ref.watch(productDetailProvider(int.parse(widget.id)));
 
@@ -174,7 +176,7 @@ class _ImageGallery extends StatelessWidget {
       return Container(
         height: 240,
         color: AppColors.surface,
-        child: const Center(
+        child: Center(
           child: Icon(Icons.camera_alt_outlined,
               size: 48, color: AppColors.textMuted),
         ),
@@ -194,7 +196,7 @@ class _ImageGallery extends StatelessWidget {
               width: double.infinity,
               errorBuilder: (_, _, _) => Container(
                 color: AppColors.surface,
-                child: const Icon(Icons.broken_image_outlined,
+                child: Icon(Icons.broken_image_outlined,
                     size: 48, color: AppColors.textMuted),
               ),
             ),
@@ -508,7 +510,7 @@ class _SpecsTable extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               border: i < entries.length - 1
-                  ? const Border(
+                  ? Border(
                       bottom: BorderSide(color: AppColors.border))
                   : null,
             ),

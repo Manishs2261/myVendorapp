@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -81,7 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(color: AppColors.border),
           ),
           title: const Text('Verify Email'),
           content: Column(
@@ -204,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(color: AppColors.border),
           ),
           title: const Text('Verify Phone'),
           content: Column(
@@ -324,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(color: AppColors.border),
           ),
           title: const Text('Edit Personal Details'),
           content: Column(
@@ -409,6 +410,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final profileAsync = ref.watch(profileNotifierProvider);
 
     return Scaffold(
@@ -479,7 +481,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           subtitle,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
       ],
     );
@@ -521,7 +523,7 @@ class _SettingsCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -530,7 +532,7 @@ class _SettingsCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
                       ),
@@ -572,7 +574,7 @@ class _PersonalDetailsCard extends StatelessWidget {
       trailing: OutlinedButton(
         onPressed: onEdit,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -609,7 +611,7 @@ class _RowDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(color: AppColors.border, height: 1, thickness: 1);
+    return Divider(color: AppColors.border, height: 1, thickness: 1);
   }
 }
 
@@ -636,7 +638,7 @@ class _DetailRow extends StatelessWidget {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 13,
               ),
@@ -645,7 +647,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -791,7 +793,7 @@ class _ChangePasswordCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Show passwords',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
@@ -838,7 +840,7 @@ class _PasswordField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: AppColors.textMuted,
@@ -877,7 +879,7 @@ class _SessionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Session',
             style: TextStyle(
               fontSize: 15,
@@ -886,12 +888,12 @@ class _SessionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             'Sign out from this device',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Logging out will clear your current vendor session and send you back to the login page.',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.4),
           ),

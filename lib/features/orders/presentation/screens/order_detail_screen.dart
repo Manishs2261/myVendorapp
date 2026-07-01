@@ -4,6 +4,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../providers/orders_provider.dart';
+import '../../../../core/theme/theme_provider.dart';
 
 class OrderDetailScreen extends ConsumerWidget {
   final String id;
@@ -11,6 +12,7 @@ class OrderDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(isDarkModeProvider);
     final orderAsync = ref.watch(orderDetailProvider(int.parse(id)));
 
     return Scaffold(

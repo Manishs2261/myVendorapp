@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/last_updated_chip.dart';
@@ -163,7 +164,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.border),
+            side: BorderSide(color: AppColors.border),
           ),
           title: Text(title),
           content: SingleChildScrollView(
@@ -278,6 +279,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final profileAsync = ref.watch(profileNotifierProvider);
     final notifier = ref.read(profileNotifierProvider.notifier);
 

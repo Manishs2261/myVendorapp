@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../providers/onboarding_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -108,6 +109,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final size = MediaQuery.of(context).size;
     final isTablet = size.width >= 600;
 

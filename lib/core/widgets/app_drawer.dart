@@ -5,12 +5,14 @@ import '../../features/profile/domain/profile_models.dart';
 import '../../features/profile/presentation/providers/profile_provider.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_provider.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(isDarkModeProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final profileAsync = ref.watch(profileNotifierProvider);
 
@@ -62,24 +64,24 @@ class _DrawerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: AppColors.border),
         ),
       ),
       child: profileAsync.when(
-        loading: () => const Row(
+        loading: () => Row(
           children: [
             CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.surface3,
-              child: SizedBox(
+              child: const SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -88,14 +90,14 @@ class _DrawerHeader extends StatelessWidget {
             ),
           ],
         ),
-        error: (e, _) => const Row(
+        error: (e, _) => Row(
           children: [
             CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.surface3,
               child: Text('V', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text('Vendor', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
           ],
         ),
@@ -119,11 +121,11 @@ class _DrawerHeader extends StatelessWidget {
                 children: [
                   Text(
                     profile.businessName,
-                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  const Text('View profile', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text('View profile', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
               ),
             ),
@@ -145,7 +147,7 @@ class _DrawerSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textMuted,
           fontSize: 11,
           fontWeight: FontWeight.w600,

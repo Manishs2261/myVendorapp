@@ -42,7 +42,7 @@ final aiImageServiceProvider = AutoDisposeProvider<AiImageService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AiImageServiceRef = AutoDisposeProviderRef<AiImageService>;
-String _$aiImageNotifierHash() => r'86eb17d1dfe26d4516a51bfc891c9d1c3316efae';
+String _$aiImageNotifierHash() => r'bfd0a5b2e5fd54ec0999b4551dc7c2c5f83a6ccd';
 
 /// See also [AiImageNotifier].
 @ProviderFor(AiImageNotifier)

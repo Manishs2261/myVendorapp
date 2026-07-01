@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_assets.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../domain/auth_models.dart';
 import '../../../../shared/widgets/cyber_glow_background.dart';
@@ -148,6 +149,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final authState = ref.watch(authNotifierProvider);
     final theme = Theme.of(context);
 
@@ -179,7 +181,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         context.pop();
                       }
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: AppColors.textPrimary,
                       size: 20,
@@ -405,7 +407,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               if (_resendCountdown > 0)
                 Text(
                   'Resend in ${_resendCountdown}s',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 )
               else
                 GestureDetector(

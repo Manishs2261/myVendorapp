@@ -11,6 +11,7 @@ import 'core/router/app_router.dart';
 import 'core/router/route_names.dart';
 import 'core/services/fcm_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'core/utils/app_logger.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'firebase_options.dart';
@@ -49,10 +50,11 @@ class MyShopVendorApp extends ConsumerStatefulWidget {
   ConsumerState<MyShopVendorApp> createState() => _MyShopVendorAppState();
 }
 
-class _MyShopVendorAppState extends ConsumerState<MyShopVendorApp> {
+class _MyShopVendorAppState extends ConsumerState<MyShopVendorApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     FcmService.onNewMessage = _onNewMessage;
     FcmService.onNotificationTap = _onNotificationTap;
 // Handle notification tap when app was terminated
@@ -74,7 +76,14 @@ class _MyShopVendorAppState extends ConsumerState<MyShopVendorApp> {
   }
 
   @override
+  void didChangePlatformBrightness() {
+    // Re-resolve system brightness in case the preference is ThemeMode.system.
+    ref.invalidate(isDarkModeProvider);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FcmService.onNewMessage = null;
     FcmService.onNotificationTap = null;
     super.dispose();
@@ -83,12 +92,14 @@ class _MyShopVendorAppState extends ConsumerState<MyShopVendorApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeNotifierProvider).valueOrNull ?? ThemeMode.system;
+    ref.watch(isDarkModeProvider); // keeps AppColors in sync before descendants build
     return MaterialApp.router(
       title: 'My Shop Seller',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

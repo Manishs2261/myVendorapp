@@ -5,6 +5,7 @@ import '../../../../core/providers/core_providers.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_assets.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/widgets/cyber_glow_background.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -73,6 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final authState = ref.watch(authNotifierProvider);
     final theme = Theme.of(context);
 
@@ -294,7 +296,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onTap: () {
                                     setState(() => _rememberMe = !_rememberMe);
                                   },
-                                  child: const Text(
+                                  child: Text(
                                     'Remember me',
                                     style: TextStyle(
                                       color: AppColors.textMuted,

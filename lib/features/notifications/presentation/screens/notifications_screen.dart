@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../domain/notification_model.dart';
 import '../providers/notifications_provider.dart';
@@ -36,6 +37,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(isDarkModeProvider);
     final state = ref.watch(notificationsNotifierProvider);
     final notifier = ref.read(notificationsNotifierProvider.notifier);
     final theme = Theme.of(context);

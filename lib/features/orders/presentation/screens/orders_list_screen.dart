@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_names.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/last_updated_chip.dart';
@@ -14,6 +15,7 @@ class OrdersListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(isDarkModeProvider);
     final ordersAsync = ref.watch(ordersNotifierProvider);
     final notifier = ref.read(ordersNotifierProvider.notifier);
 

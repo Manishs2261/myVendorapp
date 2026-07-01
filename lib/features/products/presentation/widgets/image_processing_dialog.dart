@@ -13,7 +13,7 @@ class ImageProcessingDialog extends StatelessWidget {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text(
+      title: Text(
         'Process Image',
         style: TextStyle(
           fontWeight: FontWeight.w600,
@@ -23,7 +23,7 @@ class ImageProcessingDialog extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'How would you like to process this image?',
             style: TextStyle(color: AppColors.textMuted),
           ),
@@ -100,17 +100,17 @@ class _OptionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14)),
                   Text(subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.textMuted, fontSize: 12)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            Icon(Icons.chevron_right, color: AppColors.textMuted),
           ],
         ),
       ),

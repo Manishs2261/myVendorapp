@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../features/products/domain/product_models.dart';
@@ -25,6 +26,7 @@ class _PromotionsScreenState extends ConsumerState<PromotionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(isDarkModeProvider);
     final state = ref.watch(promotionsProvider);
 
     return Scaffold(
@@ -192,7 +194,7 @@ class _InfoBanner extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textMuted,
                         ),
-                    children: const [
+                    children: [
                       TextSpan(
                           text:
                               'Sponsored products appear with a subtle '),
@@ -281,7 +283,7 @@ class _ProductSponsorTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         margin: const EdgeInsets.only(bottom: 1),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border:
               Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
         ),
@@ -354,7 +356,7 @@ class _ProductDetailsSheet extends StatelessWidget {
       minChildSize: 0.4,
       maxChildSize: 0.92,
       builder: (context, scrollController) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -432,7 +434,7 @@ class _ProductDetailsSheet extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Divider
-            const Divider(color: AppColors.border, height: 1),
+            Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 20),
 
             // Sponsorship status section
@@ -481,7 +483,7 @@ class _ProductDetailsSheet extends StatelessWidget {
   Widget _imagePlaceholder() => Container(
         height: 180,
         color: AppColors.surface3,
-        child: const Center(
+        child: Center(
           child: Icon(Icons.image, size: 48, color: AppColors.textDim),
         ),
       );
@@ -535,7 +537,7 @@ class _StatusDetail extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.add_circle_outline,
+          Icon(Icons.add_circle_outline,
               color: AppColors.textMuted, size: 20),
           const SizedBox(width: 10),
           Expanded(
@@ -629,7 +631,7 @@ class _ProductImage extends StatelessWidget {
         width: 48,
         height: 48,
         color: AppColors.surface3,
-        child: const Icon(Icons.image, size: 20, color: AppColors.textDim),
+        child: Icon(Icons.image, size: 20, color: AppColors.textDim),
       );
 }
 
