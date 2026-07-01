@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/network/api_exception.dart';
 
 class AiModelLoadingException extends ApiException {
@@ -28,7 +29,7 @@ class AiImageRemoteSource {
     // validateStatus lets 503 through so we can inspect the body ourselves.
     // Override receive timeout to 3 min — AI inference can be slow on cold start.
     final response = await _dio.post<List<int>>(
-      '/m/vendor/ai/remove-background',
+      ApiEndpoints.aiRemoveBackground,
       data: formData,
       cancelToken: cancelToken,
       options: Options(

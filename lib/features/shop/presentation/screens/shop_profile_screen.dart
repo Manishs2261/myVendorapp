@@ -381,9 +381,9 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(icon: Icon(Icons.info_outline, size: 16), text: 'Details'),
-            Tab(icon: Icon(Icons.photo_library_outlined, size: 16), text: 'Media'),
-            Tab(icon: Icon(Icons.location_on_outlined, size: 16), text: 'Location'),
+            Tab( text: 'Details'),
+            Tab(text: 'Media'),
+            Tab( text: 'Location'),
           ],
         ),
       ),

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/network/api_endpoints.dart';
+
 class ProductsRemoteSource {
   final Dio _dio;
   ProductsRemoteSource(this._dio);
@@ -23,7 +25,7 @@ class ProductsRemoteSource {
     int? maxStock,
   }) async {
     final response = await _dio.get(
-      '/m/vendor/products',
+      ApiEndpoints.products,
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -44,17 +46,17 @@ class ProductsRemoteSource {
   }
 
   Future<Map<String, dynamic>> publishDraft(int id) async {
-    final response = await _dio.post('/m/vendor/products/$id/publish');
+    final response = await _dio.post(ApiEndpoints.productPublish(id));
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> getProduct(int id) async {
-    final response = await _dio.get('/m/vendor/products/$id');
+    final response = await _dio.get(ApiEndpoints.productById(id));
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> createProduct(Map<String, dynamic> body) async {
-    final response = await _dio.post('/m/vendor/products', data: body);
+    final response = await _dio.post(ApiEndpoints.products, data: body);
     return response.data as Map<String, dynamic>;
   }
 
@@ -87,7 +89,7 @@ class ProductsRemoteSource {
     }
 
     final response = await _dio.post(
-      '/m/vendor/products',
+      ApiEndpoints.products,
       data: formData,
       options: Options(
         contentType: 'multipart/form-data; boundary=${formData.boundary}',
@@ -98,7 +100,7 @@ class ProductsRemoteSource {
 
   Future<Map<String, dynamic>> updateProduct(
       int id, Map<String, dynamic> body) async {
-    final response = await _dio.put('/m/vendor/products/$id', data: body);
+    final response = await _dio.put(ApiEndpoints.productById(id), data: body);
     return response.data as Map<String, dynamic>;
   }
 
@@ -132,7 +134,7 @@ class ProductsRemoteSource {
     }
 
     final response = await _dio.put(
-      '/m/vendor/products/$id',
+      ApiEndpoints.productById(id),
       data: formData,
       options: Options(
         contentType: 'multipart/form-data; boundary=${formData.boundary}',
@@ -141,14 +143,14 @@ class ProductsRemoteSource {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<void> deleteProduct(int id) => _dio.delete('/m/vendor/products/$id');
+  Future<void> deleteProduct(int id) => _dio.delete(ApiEndpoints.productById(id));
 
   Future<List<dynamic>> getCategories() async {
-    final response = await _dio.get('/public/categories');
+    final response = await _dio.get(ApiEndpoints.categories);
     return response.data as List<dynamic>;
   }
 
   Future<void> requestSponsorship(int productId) async {
-    await _dio.post('/m/vendor/products/$productId/sponsor-request');
+    await _dio.post(ApiEndpoints.productSponsorRequest(productId));
   }
 }

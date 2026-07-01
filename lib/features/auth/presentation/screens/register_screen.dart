@@ -285,6 +285,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
             const SizedBox(height: 24),
             TextFormField(
+              maxLength: 200,
               controller: _nameCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: _fieldDecoration('Your Name', Icons.person),
@@ -296,6 +297,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               keyboardType: TextInputType.emailAddress,
               style: const TextStyle(color: Colors.white),
               decoration: _fieldDecoration('Email', Icons.email_outlined),
+              maxLength: 200,
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Required';
                 if (!v.contains('@')) return 'Enter a valid email';
@@ -305,6 +307,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _phoneCtrl,
+              maxLength: 12,
               keyboardType: TextInputType.phone,
               style: const TextStyle(color: Colors.white),
               inputFormatters: [
@@ -322,6 +325,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             TextFormField(
               controller: _passCtrl,
               obscureText: _obscurePass,
+              maxLength: 200,
               style: const TextStyle(color: Colors.white),
               decoration: _fieldDecoration('Password', Icons.lock_outline_rounded).copyWith(
                 suffixIcon: IconButton(

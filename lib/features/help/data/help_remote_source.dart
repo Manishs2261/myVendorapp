@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/network/api_endpoints.dart';
+
 class HelpRemoteSource {
   final Dio _dio;
   HelpRemoteSource(this._dio);
@@ -11,7 +13,7 @@ class HelpRemoteSource {
     int limit = 20,
   }) async {
     final response = await _dio.get(
-      '/m/vendor/help/feedback',
+      ApiEndpoints.helpFeedback,
       queryParameters: <String, dynamic>{
         'page': page,
         'limit': limit,
@@ -25,7 +27,7 @@ class HelpRemoteSource {
   Future<Map<String, dynamic>> submitFeedback(
     Map<String, dynamic> body,
   ) async {
-    final response = await _dio.post('/m/vendor/help/feedback', data: body);
+    final response = await _dio.post(ApiEndpoints.helpFeedback, data: body);
     return response.data as Map<String, dynamic>;
   }
 }

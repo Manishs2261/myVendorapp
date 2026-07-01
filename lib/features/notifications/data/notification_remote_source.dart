@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/network/api_endpoints.dart';
+
 class NotificationRemoteSource {
   final Dio _dio;
 
@@ -7,22 +9,22 @@ class NotificationRemoteSource {
 
   Future<Map<String, dynamic>> getNotifications({int page = 1, int limit = 20, bool unreadOnly = false}) async {
     final response = await _dio.get(
-      '/m/vendor/notifications',
+      ApiEndpoints.notifications,
       queryParameters: {'page': page, 'limit': limit, 'unread_only': unreadOnly},
     );
     return response.data as Map<String, dynamic>;
   }
 
   Future<void> markRead(String id) async {
-    await _dio.put('/m/vendor/notifications/$id/read');
+    await _dio.put(ApiEndpoints.notificationRead(id));
   }
 
   Future<void> markAllRead() async {
-    await _dio.put('/m/vendor/notifications/read-all');
+    await _dio.put(ApiEndpoints.notificationsReadAll);
   }
 
   Future<int> getUnreadCount() async {
-    final response = await _dio.get('/m/vendor/notifications/unread-count');
+    final response = await _dio.get(ApiEndpoints.notificationsUnreadCount);
     return (response.data as Map<String, dynamic>)['count'] as int? ?? 0;
   }
 }

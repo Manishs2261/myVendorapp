@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../domain/shop_analytics_models.dart';
 
 class ShopAnalyticsRemoteSource {
@@ -9,15 +10,15 @@ class ShopAnalyticsRemoteSource {
     final params = {'period': period};
 
     final results = await Future.wait([
-      _safeMap('/vendor/analytics/v2/overview', queryParameters: params),
-      _safeMap('/vendor/analytics/v2/products',
+      _safeMap(ApiEndpoints.analyticsOverview, queryParameters: params),
+      _safeMap(ApiEndpoints.analyticsProducts,
           queryParameters: {...params, 'limit': 50}),
-      _safeMap('/vendor/analytics/v2/search-keywords', queryParameters: params),
-      _safeMap('/vendor/analytics/v2/actions', queryParameters: params),
-      _safeMap('/vendor/analytics/v2/charts/daily-traffic',
+      _safeMap(ApiEndpoints.analyticsSearchKeywords, queryParameters: params),
+      _safeMap(ApiEndpoints.analyticsActions, queryParameters: params),
+      _safeMap(ApiEndpoints.analyticsDailyTraffic,
           queryParameters: params),
-      _safeMap('/vendor/analytics/v2/insights'),
-      _safeList('/sponsorships/vendor/status'),
+      _safeMap(ApiEndpoints.analyticsInsights),
+      _safeList(ApiEndpoints.sponsorshipStatus),
     ]);
 
     final overview = results[0] as Map<String, dynamic>;

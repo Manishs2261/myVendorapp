@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../storage/secure_storage.dart';
+import 'api_endpoints.dart';
 import 'api_exception.dart';
 
 class AuthInterceptor extends Interceptor {
@@ -42,7 +43,7 @@ class AuthInterceptor extends Interceptor {
       if (refreshToken == null) throw const UnauthorizedException();
 
       final response = await _dio.post(
-        '/auth/refresh',
+        ApiEndpoints.refresh,
         data: {'refresh_token': refreshToken},
         options: Options(headers: {'Authorization': null}),
       );

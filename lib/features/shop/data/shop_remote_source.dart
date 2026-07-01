@@ -1,27 +1,29 @@
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/network/api_endpoints.dart';
+
 class ShopRemoteSource {
   final Dio _dio;
   ShopRemoteSource(this._dio);
 
   Future<Map<String, dynamic>> getShop() async {
-    final response = await _dio.get('/m/vendor/shop');
+    final response = await _dio.get(ApiEndpoints.shop);
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> updateShop(Map<String, dynamic> data) async {
-    final response = await _dio.put('/m/vendor/shop', data: data);
+    final response = await _dio.put(ApiEndpoints.shop, data: data);
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> requestVerification() async {
-    final response = await _dio.post('/m/vendor/shop/request-verification');
+    final response = await _dio.post(ApiEndpoints.shopRequestVerification);
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> getReviewStats() async {
-    final response = await _dio.get('/m/vendor/shop-reviews/stats');
+    final response = await _dio.get(ApiEndpoints.shopReviewsStats);
     return response.data as Map<String, dynamic>;
   }
 
@@ -33,7 +35,7 @@ class ShopRemoteSource {
     String sort = 'latest',
   }) async {
     final response = await _dio.get(
-      '/m/vendor/shop-reviews',
+      ApiEndpoints.shopReviews,
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -52,7 +54,7 @@ class ShopRemoteSource {
         filename: file.name,
       ),
     });
-    final response = await _dio.post('/m/vendor/shop/logo', data: formData);
+    final response = await _dio.post(ApiEndpoints.shopLogo, data: formData);
     return (response.data as Map<String, dynamic>)['url'] as String;
   }
 
@@ -63,7 +65,7 @@ class ShopRemoteSource {
         filename: file.name,
       ),
     });
-    final response = await _dio.post('/m/vendor/shop/banner', data: formData);
+    final response = await _dio.post(ApiEndpoints.shopBanner, data: formData);
     return (response.data as Map<String, dynamic>)['url'] as String;
   }
 
@@ -78,13 +80,13 @@ class ShopRemoteSource {
         ),
       ));
     }
-    final response = await _dio.post('/m/vendor/shop/gallery', data: formData);
+    final response = await _dio.post(ApiEndpoints.shopGallery, data: formData);
     final urls = (response.data as Map<String, dynamic>)['urls'] as List;
     return urls.map((e) => e.toString()).toList();
   }
 
   Future<Map<String, dynamic>> getProductReviewStats() async {
-    final response = await _dio.get('/m/vendor/reviews/stats');
+    final response = await _dio.get(ApiEndpoints.reviewsStats);
     return response.data as Map<String, dynamic>;
   }
 
@@ -96,7 +98,7 @@ class ShopRemoteSource {
     String sort = 'latest',
   }) async {
     final response = await _dio.get(
-      '/m/vendor/reviews',
+      ApiEndpoints.reviews,
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -109,7 +111,7 @@ class ShopRemoteSource {
   }
 
   Future<void> removeGalleryImage(String url) async {
-    await _dio.delete('/m/vendor/shop/gallery', data: {'url': url});
+    await _dio.delete(ApiEndpoints.shopGallery, data: {'url': url});
   }
 
   Future<String> uploadIdDocument(XFile file) async {
@@ -119,7 +121,7 @@ class ShopRemoteSource {
         filename: file.name,
       ),
     });
-    final response = await _dio.post('/m/vendor/shop/id-document', data: formData);
+    final response = await _dio.post(ApiEndpoints.shopIdDocument, data: formData);
     return (response.data as Map<String, dynamic>)['url'] as String;
   }
 }

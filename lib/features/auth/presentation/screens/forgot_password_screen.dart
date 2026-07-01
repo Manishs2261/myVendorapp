@@ -93,7 +93,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('My Shop', textAlign: TextAlign.center,
+                Text('My Shop Seller', textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5)),
                 const SizedBox(height: 6),
                 Text('Reset your password', textAlign: TextAlign.center,
