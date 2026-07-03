@@ -25,6 +25,7 @@ import '../../features/notifications/presentation/screens/notifications_screen.d
 import '../../features/payments/presentation/screens/payments_screen.dart';
 import '../../features/products/presentation/screens/product_reviews_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/promotions/presentation/screens/promotions_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/shop/presentation/screens/shop_profile_screen.dart';
@@ -175,6 +176,10 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
             path: RouteNames.profile,
             builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.editProfile,
+            builder: (_, _) => const EditProfileScreen(),
           ),
           GoRoute(
             path: RouteNames.analytics,

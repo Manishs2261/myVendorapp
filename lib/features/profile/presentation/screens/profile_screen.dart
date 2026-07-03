@@ -61,6 +61,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         title: const Text('Profile'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => context.push(RouteNames.editProfile),
+          ),
           if (notifier.lastUpdated != null)
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
@@ -174,6 +178,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             fontWeight: FontWeight.w600,
                             color: AppColors.primary,
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => context.push(RouteNames.editProfile),
+                        icon: const Icon(Icons.edit_outlined, size: 14),
+                        label: const Text('Edit Profile', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                     ],

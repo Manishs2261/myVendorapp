@@ -14,6 +14,7 @@ abstract final class RouteNames {
   static const orderDetail = '/orders/:id';
   static const shop = '/shop';
   static const profile = '/profile';
+  static const editProfile = '/profile/edit';
 
   static const editProduct = '/products/:id/edit';
 
