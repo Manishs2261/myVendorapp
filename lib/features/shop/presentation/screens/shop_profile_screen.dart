@@ -63,6 +63,9 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    Future.microtask(
+      () => ref.read(shopNotifierProvider.notifier).refreshInBackground(),
+    );
   }
 
   @override
@@ -406,6 +409,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
               ?.totalProducts ?? 0;
           return Column(
             children: [
+              if(!shop.verified)
               _ProfileCompletionBar(shop: shop, totalProducts: totalProducts),
               Expanded(
                 child: Form(

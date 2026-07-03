@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -11,6 +12,7 @@ import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/profile_provider.dart';
+import '../../domain/profile_models.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -20,262 +22,29 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-
-  bool _editing = false;
-  bool _saving = false;
-  bool _initialized = false;
-
-  String _originalEmail = '';
-  String _originalPhone = '';
-
-  // Edit-mode: track inline change + verification
-  bool _emailChangedAndUnverified = false;
-  bool _phoneChangedAndUnverified = false;
-  bool _emailVerifiedInSession = false;
-  bool _phoneVerifiedInSession = false;
-
-  // View-mode: optimistic hide of Verify button after OTP success
-  bool _emailVerified = false;
-  bool _phoneVerified = false;
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
-    super.dispose();
+  String _formatValue(dynamic value) {
+    if (value == null) return '';
+    final s = value.toString().trim();
+    if (s.isEmpty || s == 'null') return '';
+    return s;
   }
 
-  void _startEdit(String name, String email, String phone) {
-    _nameCtrl.text = name;
-    _emailCtrl.text = email;
-    _phoneCtrl.text = phone;
-    _originalEmail = email;
-    _originalPhone = phone;
-    _emailChangedAndUnverified = false;
-    _phoneChangedAndUnverified = false;
-    _emailVerifiedInSession = false;
-    _phoneVerifiedInSession = false;
-    setState(() => _editing = true);
-  }
-
-  void _cancelEdit() => setState(() => _editing = false);
-
-  // ── Inline verify: save new email → OTP dialog → revert on cancel ──────────
-
-  Future<void> _verifyNewEmail() async {
-    final remote = ref.read(settingsRemoteSourceProvider);
-    final newEmail = _emailCtrl.text.trim();
-    final ok = await _showOtpDialog(
-      title: 'Verify New Email',
-      description: 'An OTP will be sent to $newEmail',
-      sendOtp: () => remote.sendEmailOtp(email: newEmail),
-      confirmOtp: remote.confirmEmailOtp,
-    );
-    if (!mounted) return;
-    if (ok) {
-      setState(() {
-        _emailVerifiedInSession = true;
-        _emailChangedAndUnverified = false;
-      });
-    }
-  }
-
-  Future<void> _verifyNewPhone() async {
-    final remote = ref.read(settingsRemoteSourceProvider);
-    final ok = await _showOtpDialog(
-      title: 'Verify New Phone',
-      description: 'An OTP will be sent to ${_phoneCtrl.text.trim()}',
-      sendOtp: remote.sendPhoneOtp,
-      confirmOtp: remote.confirmPhoneOtp,
-    );
-    if (!mounted) return;
-    if (ok) {
-      setState(() {
-        _phoneVerifiedInSession = true;
-        _phoneChangedAndUnverified = false;
-      });
-    }
-  }
-
-  // ── Save ───────────────────────────────────────────────────────────────────
-
-  Future<void> _save() async {
-    if (_emailChangedAndUnverified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your new email first')),
-      );
-      return;
-    }
-    if (_phoneChangedAndUnverified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your new phone first')),
-      );
-      return;
-    }
-    setState(() => _saving = true);
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return '';
     try {
-      await ref.read(profileNotifierProvider.notifier).save({
-        'business_name': _nameCtrl.text.trim(),
-        'business_email': _emailCtrl.text.trim(),
-        'email': _emailCtrl.text.trim(),
-        'business_phone': _phoneCtrl.text.trim(),
-      });
-      setState(() => _editing = false);
-      ref.invalidate(profileNotifierProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      final date = DateTime.parse(dateStr);
+      return DateFormat('MMMM dd, yyyy').format(date);
+    } catch (_) {
+      return dateStr;
     }
   }
 
-  // ── OTP dialog (reusable) ──────────────────────────────────────────────────
-
-  Future<bool> _showOtpDialog({
-    required String title,
-    required String description,
-    required Future<void> Function() sendOtp,
-    required Future<void> Function(String) confirmOtp,
-  }) async {
-    bool otpSent = false;
-    bool sending = false;
-    bool confirming = false;
-    bool verified = false;
-    String? errorMsg;
-    final otpCtrl = TextEditingController();
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.border),
-          ),
-          title: Text(title),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!otpSent)
-                  Text(description,
-                      style: TextStyle(
-                          color: AppColors.textMuted, fontSize: 13)),
-                if (otpSent) ...[
-                  Text('Enter the 6-digit OTP:',
-                      style: TextStyle(
-                          color: AppColors.textMuted, fontSize: 13)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: otpCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    textAlign: TextAlign.center,
-                    autofocus: true,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      letterSpacing: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '------',
-                      counterText: '',
-                    ),
-                  ),
-                ],
-                if (errorMsg != null) ...[
-                  const SizedBox(height: 8),
-                  Text(errorMsg!,
-                      style: const TextStyle(
-                          color: AppColors.error, fontSize: 13)),
-                ],
-                if (sending || confirming) ...[
-                  const SizedBox(height: 12),
-                  const Center(child: CircularProgressIndicator()),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: (sending || confirming) ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            if (!otpSent)
-              FilledButton(
-                onPressed: sending
-                    ? null
-                    : () async {
-                        setDialogState(() {
-                          sending = true;
-                          errorMsg = null;
-                        });
-                        try {
-                          await sendOtp();
-                          setDialogState(() {
-                            otpSent = true;
-                            sending = false;
-                          });
-                        } catch (e) {
-                          setDialogState(() {
-                            errorMsg = e.toString();
-                            sending = false;
-                          });
-                        }
-                      },
-                child: const Text('Send OTP'),
-              ),
-            if (otpSent)
-              FilledButton(
-                onPressed: confirming
-                    ? null
-                    : () async {
-                        if (otpCtrl.text.trim().length != 6) {
-                          setDialogState(
-                              () => errorMsg = 'Enter the 6-digit OTP');
-                          return;
-                        }
-                        setDialogState(() {
-                          confirming = true;
-                          errorMsg = null;
-                        });
-                        try {
-                          await confirmOtp(otpCtrl.text.trim());
-                          verified = true;
-                          if (ctx.mounted) Navigator.pop(ctx);
-                        } catch (e) {
-                          setDialogState(() {
-                            errorMsg = e.toString();
-                            confirming = false;
-                          });
-                        }
-                      },
-                child: const Text('Verify'),
-              ),
-          ],
-        ),
-      ),
-    );
-
-    return verified;
+  String _formatGender(dynamic val) {
+    if (val == null) return '';
+    final s = val.toString().trim();
+    if (s.isEmpty || s == 'null') return '';
+    return s[0].toUpperCase() + s.substring(1).toLowerCase();
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -291,213 +60,409 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         title: const Text('Profile'),
         actions: [
-          LastUpdatedChip(
-            lastUpdated: notifier.lastUpdated,
-            isRefreshing: profileAsync.isLoading,
-          ),
-          if (profileAsync.hasValue)
-            _editing
-                ? _saving
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextButton(
-                              onPressed: _cancelEdit,
-                              child: const Text('Cancel')),
-                          TextButton(
-                              onPressed: _save, child: const Text('Save')),
-                        ],
-                      )
-                : IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Edit profile',
-                    onPressed: () {
-                      final p = profileAsync.value!;
-                      _startEdit(p.businessName, p.email, p.phone);
-                    },
-                  ),
+          if (notifier.lastUpdated != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: LastUpdatedChip(lastUpdated: notifier.lastUpdated!),
+            ),
         ],
       ),
       body: profileAsync.when(
         loading: () => const ShimmerList(count: 5, itemHeight: 60),
         error: (e, _) => ErrorView(message: e.toString()),
         data: (profile) {
-          if (!_initialized) _initialized = true;
           return RefreshIndicator(
             onRefresh: () => notifier.refresh(),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundImage: profile.logoUrl != null
-                      ? NetworkImage(profile.logoUrl!)
-                      : null,
-                  child: profile.logoUrl == null
-                      ? Text(
-                          profile.businessName[0].toUpperCase(),
-                          style: const TextStyle(fontSize: 28),
-                        )
-                      : null,
+                // Premium Vendor Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.4),
+                                width: 3,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 46,
+                              backgroundColor: AppColors.surface2,
+                              backgroundImage: profile.avatarUrl != null
+                                  ? NetworkImage(profile.avatarUrl!)
+                                  : null,
+                              child: profile.avatarUrl == null
+                                  ? Text(
+                                      (profile.name?.isNotEmpty ?? false)
+                                          ? profile.name![0].toUpperCase()
+                                          : 'V',
+                                      style: TextStyle(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: profile.status == 'active'
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.surface,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Text(
+                                (profile.status ?? 'unknown').toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        profile.name ?? 'No Name',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGlow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          (profile.role ?? 'VENDOR').toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
-                if (!_editing)
-                  Center(
-                    child: Text(
-                      profile.businessName,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                const SizedBox(height: 24),
 
-                // ── Edit mode ───────────────────────────────────────────────
-                if (_editing) ...[
-                  TextFormField(
-                    controller: _nameCtrl,
-                    maxLength: 100,
-                    decoration: const InputDecoration(
-                      labelText: 'Your Name',
-                      prefixIcon: Icon(Icons.person_outlined),
+                // Contact Card
+                _ProfileCard(
+                  title: 'Contact Information',
+                  children: [
+                    _ProfileDetailRow(
+                      label: 'Email',
+                      value: _formatValue(profile.email),
+                      icon: Icons.email_outlined,
+                      isVerified: profile.isEmailVerified,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _emailCtrl,
-                    maxLength: 100,
-                    keyboardType: TextInputType.emailAddress,
-                    onChanged: (val) {
-                      final changed = val.trim() != _originalEmail;
-                      setState(() {
-                        _emailChangedAndUnverified =
-                            changed && !_emailVerifiedInSession;
-                        if (!changed) _emailVerifiedInSession = false;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      suffixIcon: _emailChangedAndUnverified
-                          ? TextButton(
-                              onPressed: _verifyNewEmail,
-                              child: const Text('Verify'),
-                            )
-                          : _emailVerifiedInSession
-                              ? const Icon(Icons.verified_rounded,
-                                  color: Colors.green, size: 18)
-                              : null,
-                      helperText: _emailChangedAndUnverified
-                          ? 'Tap Verify to confirm new email'
-                          : null,
+                    const Divider(height: 1, thickness: 0.5),
+                    _ProfileDetailRow(
+                      label: 'Phone',
+                      value: _formatValue(profile.phone),
+                      icon: Icons.phone_outlined,
+                      isVerified: profile.isPhoneVerified,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _phoneCtrl,
-                    maxLength: 15,
-                    keyboardType: TextInputType.phone,
-                    onChanged: (val) {
-                      final changed = val.trim() != _originalPhone;
-                      setState(() {
-                        _phoneChangedAndUnverified =
-                            changed && !_phoneVerifiedInSession;
-                        if (!changed) _phoneVerifiedInSession = false;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Phone',
-                      prefixIcon: const Icon(Icons.phone_outlined),
-                      suffixIcon: _phoneChangedAndUnverified
-                          ? TextButton(
-                              onPressed: _verifyNewPhone,
-                              child: const Text('Verify'),
-                            )
-                          : _phoneVerifiedInSession
-                              ? const Icon(Icons.verified_rounded,
-                                  color: Colors.green, size: 18)
-                              : null,
-                      helperText: _phoneChangedAndUnverified
-                          ? 'Tap Verify to confirm new phone'
-                          : null,
+                    const Divider(height: 1, thickness: 0.5),
+                    _ProfileDetailRow(
+                      label: 'Alternate Phone',
+                      value: _formatValue(profile.alternatePhone),
+                      icon: Icons.phone_android_outlined,
                     ),
-                  ),
+                  ],
+                ),
 
-                // ── View mode ───────────────────────────────────────────────
-                ] else ...[
-                  ListTile(
-                    leading: const Icon(Icons.email_outlined),
-                    title: const Text('Email'),
-                    subtitle: Text(profile.email),
-                    trailing: (profile.isEmailVerified || _emailVerified)
-                        ? const Icon(Icons.verified_rounded,
-                            color: Colors.green, size: 18)
-                        : TextButton(
-                            onPressed: () async {
-                              final remote =
-                                  ref.read(settingsRemoteSourceProvider);
-                              final ok = await _showOtpDialog(
-                                title: 'Verify Email',
-                                description:
-                                    'A 6-digit OTP will be sent to your email address.',
-                                sendOtp: remote.sendEmailOtp,
-                                confirmOtp: remote.confirmEmailOtp,
-                              );
-                              if (mounted) {
-                                if (ok) setState(() => _emailVerified = true);
-                                ref.invalidate(profileNotifierProvider);
-                              }
-                            },
-                            child: const Text('Verify'),
-                          ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.phone_outlined),
-                    title: const Text('Phone'),
-                    subtitle: Text(profile.phone),
-                    trailing: (profile.isPhoneVerified || _phoneVerified)
-                        ? const Icon(Icons.verified_rounded,
-                            color: Colors.green, size: 18)
-                        : TextButton(
-                            onPressed: () async {
-                              final remote =
-                                  ref.read(settingsRemoteSourceProvider);
-                              final ok = await _showOtpDialog(
-                                title: 'Verify Phone',
-                                description:
-                                    'A 6-digit OTP will be sent to your phone number.',
-                                sendOtp: remote.sendPhoneOtp,
-                                confirmOtp: remote.confirmPhoneOtp,
-                              );
-                              if (mounted) {
-                                if (ok) setState(() => _phoneVerified = true);
-                                ref.invalidate(profileNotifierProvider);
-                              }
-                            },
-                            child: const Text('Verify'),
-                          ),
-                  ),
-                ],
+                // Location Card
+                _ProfileCard(
+                  title: 'Address & Location',
+                  children: [
+                    _ProfileDetailRow(
+                      label: 'City',
+                      value: _formatValue(profile.city),
+                      icon: Icons.location_city_outlined,
+                    ),
+                    const Divider(height: 1, thickness: 0.5),
+                    _ProfileDetailRow(
+                      label: 'State',
+                      value: _formatValue(profile.state),
+                      icon: Icons.map_outlined,
+                    ),
+                    const Divider(height: 1, thickness: 0.5),
+                    _ProfileDetailRow(
+                      label: 'Pincode',
+                      value: _formatValue(profile.pincode),
+                      icon: Icons.pin_drop_outlined,
+                    ),
+                  ],
+                ),
 
-                const Divider(height: 32),
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Sign Out'),
-                  onTap: () async {
+                // Personal Details Card
+                _ProfileCard(
+                  title: 'Personal Details',
+                  children: [
+                    _ProfileDetailRow(
+                      label: 'Gender',
+                      value: _formatGender(profile.gender),
+                      icon: Icons.person_outline,
+                    ),
+                    const Divider(height: 1, thickness: 0.5),
+                    _ProfileDetailRow(
+                      label: 'Date of Birth',
+                      value: _formatValue(profile.dateOfBirth),
+                      icon: Icons.cake_outlined,
+                    ),
+                  ],
+                ),
+
+                // Account/System Details Card
+                _ProfileCard(
+                  title: 'Account Details',
+                  children: [
+                    _ProfileDetailRow(
+                      label: 'Joined Date',
+                      value: _formatDate(profile.createdAt),
+                      icon: Icons.calendar_today_outlined,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Logout Action
+                _ProfileSessionCard(
+                  onLogout: () async {
                     await ref.read(authNotifierProvider.notifier).logout();
                     if (context.mounted) context.go(RouteNames.login);
                   },
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// Helper Widgets
+class _ProfileCard extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _ProfileCard({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool? isVerified;
+
+  const _ProfileDetailRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.isVerified,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value.isEmpty ? 'Not specified' : value;
+    final isNotSpecified = value.isEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displayValue,
+                  style: TextStyle(
+                    color: isNotSpecified
+                        ? AppColors.textDim
+                        : AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: isNotSpecified
+                        ? FontWeight.normal
+                        : FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (isVerified != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isVerified! ? AppColors.successBg : AppColors.warningBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isVerified! ? Icons.check_circle : Icons.cancel,
+                    size: 12,
+                    color: isVerified! ? AppColors.success : AppColors.warning,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isVerified! ? 'Verified' : 'Unverified',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isVerified!
+                          ? AppColors.success
+                          : AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSessionCard extends StatelessWidget {
+  final VoidCallback onLogout;
+
+  const _ProfileSessionCard({required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.errorBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Log out from your vendor account',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: onLogout,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: const BorderSide(color: AppColors.error),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
       ),
     );
   }

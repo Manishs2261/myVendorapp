@@ -313,7 +313,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _showEditProfileDialog(VendorProfile profile) async {
-    final nameCtrl = TextEditingController(text: profile.businessName);
+    final nameCtrl = TextEditingController(text: profile.name);
     bool saving = false;
     String? errorMsg;
 
@@ -431,6 +431,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: 'Settings',
               subtitle: 'Account access and session controls',
             ),
+            const SizedBox(height: 16),
+            const _AppearanceCard(),
             const SizedBox(height: 16),
             _PersonalDetailsCard(
               profile: profile,
@@ -551,6 +553,69 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
+// ─── Appearance Card ───────────────────────────────────────────────────────────
+
+class _AppearanceCard extends ConsumerWidget {
+  const _AppearanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeNotifierProvider).valueOrNull ?? ThemeMode.system;
+
+    return _SettingsCard(
+      title: 'Appearance',
+      subtitle: 'Choose how the app looks',
+      child: Row(
+        children: ThemeMode.values.map((mode) {
+          final selected = mode == themeMode;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: mode == ThemeMode.values.last ? 0 : 8),
+              child: GestureDetector(
+                onTap: () => ref.read(themeModeNotifierProvider.notifier).setThemeMode(mode),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primaryGlow : AppColors.surface2,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        switch (mode) {
+                          ThemeMode.system => Icons.brightness_auto_outlined,
+                          ThemeMode.light => Icons.light_mode_outlined,
+                          ThemeMode.dark => Icons.dark_mode_outlined,
+                        },
+                        size: 20,
+                        color: selected ? AppColors.primary : AppColors.textMuted,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        switch (mode) {
+                          ThemeMode.system => 'System',
+                          ThemeMode.light => 'Light',
+                          ThemeMode.dark => 'Dark',
+                        },
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? AppColors.primary : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 // ─── Personal Details Card ─────────────────────────────────────────────────────
 
 class _PersonalDetailsCard extends StatelessWidget {
@@ -583,20 +648,20 @@ class _PersonalDetailsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _DetailRow(label: 'Name', value: profile.businessName),
+          _DetailRow(label: 'Name', value: profile.name ?? ''),
           const _RowDivider(),
           _DetailRow(
             label: 'Email',
-            value: profile.email,
+            value: profile.email ?? '',
             verified: profile.isEmailVerified,
-            onVerify: profile.isEmailVerified ? null : onVerifyEmail,
+            onVerify: profile.isEmailVerified ?? false ? null : onVerifyEmail,
           ),
           const _RowDivider(),
           _DetailRow(
             label: 'Phone',
-            value: profile.phone,
+            value: profile.phone ?? '',
             verified: profile.isPhoneVerified,
-            onVerify: profile.isPhoneVerified ? null : onVerifyPhone,
+            onVerify: profile.isPhoneVerified ?? false ? null : onVerifyPhone,
           ),
           const _RowDivider(),
           _DetailRow(label: 'Role', value: 'VENDOR'),

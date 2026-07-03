@@ -57,6 +57,11 @@ class ShopNotifier extends _$ShopNotifier {
     } catch (_) {}
   }
 
+  /// Re-fetches shop data even if the cache is still fresh, without showing
+  /// a loading spinner. Call this when the Shop Profile screen opens so it
+  /// always reflects the latest data instead of only refreshing on TTL expiry.
+  Future<void> refreshInBackground() => _backgroundRefresh();
+
   Future<Shop> _fetchAndCache() async {
     final data = await ref.read(shopRepositoryProvider).getShop();
     await ref.read(cacheServiceProvider).put(

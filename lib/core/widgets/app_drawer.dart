@@ -7,6 +7,8 @@ import '../router/route_names.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_provider.dart';
 
+final drawerOpenedProvider = StateProvider<bool>((ref) => false);
+
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
@@ -14,7 +16,9 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(isDarkModeProvider);
     final location = GoRouterState.of(context).matchedLocation;
-    final profileAsync = ref.watch(profileNotifierProvider);
+    final hasOpened = ref.watch(drawerOpenedProvider);
+    final profileAsync =
+        hasOpened ? ref.watch(profileNotifierProvider) : const AsyncValue<VendorProfile>.loading();
 
     return Drawer(
       backgroundColor: AppColors.surface,
@@ -101,35 +105,41 @@ class _DrawerHeader extends StatelessWidget {
             Text('Vendor', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
           ],
         ),
-        data: (profile) => Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.primaryGlow,
-              backgroundImage: profile.logoUrl != null ? NetworkImage(profile.logoUrl!) : null,
-              child: profile.logoUrl == null
-                  ? Text(
-                      profile.businessName.isNotEmpty ? profile.businessName[0].toUpperCase() : 'V',
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 18),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    profile.businessName,
-                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text('View profile', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                ],
+        data: (profile) => InkWell(
+          onTap: (){
+            Navigator.pop(context);
+            context.go(RouteNames.profile);
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.primaryGlow,
+                backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+                child: profile.avatarUrl == null
+                    ? Text(
+                    (profile.name?.isNotEmpty ?? false) ? profile.name![0] : 'V',
+                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 18),
+                      )
+                    : null,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.name ?? '',
+                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text('View profile', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

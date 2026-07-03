@@ -25,7 +25,7 @@ class DashboardScreen extends ConsumerWidget {
     final analyticsAsync = ref.watch(shopAnalyticsNotifierProvider);
     final period = ref.watch(shopAnalyticsPeriodProvider);
     final notifier = ref.read(shopAnalyticsNotifierProvider.notifier);
-    final shopAsync = ref.watch(shopNotifierProvider);
+   final shopAsync = ref.watch(shopNotifierProvider);
     final dashboardAsync = ref.watch(dashboardNotifierProvider);
 
     return Scaffold(
