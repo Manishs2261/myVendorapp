@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -68,7 +69,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
       body: profileAsync.when(
-        loading: () => const ShimmerList(count: 5, itemHeight: 60),
+        loading: () => const _ProfileShimmerLoading(),
         error: (e, _) => ErrorView(message: e.toString()),
         data: (profile) {
           return RefreshIndicator(
@@ -463,6 +464,137 @@ class _ProfileSessionCard extends StatelessWidget {
             child: const Text('Logout'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileShimmerLoading extends StatelessWidget {
+  const _ProfileShimmerLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        // Header Shimmer
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(
+                width: 92,
+                height: 92,
+                child: _DynamicShimmer(shape: BoxShape.circle),
+              ),
+              const SizedBox(height: 16),
+              const Center(
+                child: _DynamicShimmer(height: 20, width: 140, borderRadius: 6),
+              ),
+              const SizedBox(height: 8),
+              const Center(
+                child: _DynamicShimmer(height: 16, width: 80, borderRadius: 6),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Info Cards Shimmers
+        for (int i = 0; i < 4; i++) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _DynamicShimmer(height: 12, width: 120, borderRadius: 4),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const _DynamicShimmer(height: 32, width: 32, borderRadius: 8),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          _DynamicShimmer(height: 10, width: 60, borderRadius: 4),
+                          SizedBox(height: 6),
+                          _DynamicShimmer(height: 14, width: 150, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const _DynamicShimmer(height: 32, width: 32, borderRadius: 8),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          _DynamicShimmer(height: 10, width: 40, borderRadius: 4),
+                          SizedBox(height: 6),
+                          _DynamicShimmer(height: 14, width: 120, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DynamicShimmer extends StatelessWidget {
+  final double height;
+  final double? width;
+  final double borderRadius;
+  final BoxShape shape;
+
+  const _DynamicShimmer({
+    this.height = 80,
+    this.width,
+    this.borderRadius = 12,
+    this.shape = BoxShape.rectangle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[850]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Container(
+        height: shape == BoxShape.circle ? null : height,
+        width: shape == BoxShape.circle ? null : (width ?? double.infinity),
+        decoration: BoxDecoration(
+          color: baseColor,
+          shape: shape,
+          borderRadius: shape == BoxShape.circle
+              ? null
+              : BorderRadius.circular(borderRadius),
+        ),
       ),
     );
   }
