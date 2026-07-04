@@ -312,8 +312,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     otpCtrl.dispose();
   }
 
-  Future<void> _showEditEmailDialog(VendorProfile profile) async {
-    final emailCtrl = TextEditingController(text: profile.email);
+  Future<void> _showEditProfileDialog(VendorProfile profile) async {
+    final nameCtrl = TextEditingController(text: profile.name);
     bool saving = false;
     String? errorMsg;
 
@@ -327,16 +327,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: AppColors.border),
           ),
-          title: const Text('Edit Email'),
+          title: const Text('Edit Personal Details'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
+                controller: nameCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'Enter new email address',
+                  labelText: 'Name',
+                  hintText: 'Your business name',
                 ),
               ),
               if (errorMsg != null) ...[
@@ -358,13 +357,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onPressed: saving
                   ? null
                   : () async {
-                      final newEmail = emailCtrl.text.trim();
-                      if (newEmail.isEmpty) {
-                        setDialogState(() => errorMsg = 'Email cannot be empty');
-                        return;
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(newEmail)) {
-                        setDialogState(() => errorMsg = 'Enter a valid email address');
+                      if (nameCtrl.text.trim().isEmpty) {
+                        setDialogState(() => errorMsg = 'Name cannot be empty');
                         return;
                       }
                       setDialogState(() {
@@ -374,9 +368,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       try {
                         await ref
                             .read(profileNotifierProvider.notifier)
-                            .save({'email': newEmail});
+                            .save({'business_name': nameCtrl.text.trim()});
                         if (ctx.mounted) Navigator.pop(ctx);
-                        _showSnack('Email updated successfully');
+                        _showSnack('Profile updated');
                       } catch (e) {
                         setDialogState(() {
                           errorMsg = _extractError(e);
@@ -390,84 +384,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-    emailCtrl.dispose();
-  }
-
-  Future<void> _showEditPhoneDialog(VendorProfile profile) async {
-    final phoneCtrl = TextEditingController(text: profile.phone);
-    bool saving = false;
-    String? errorMsg;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.border),
-          ),
-          title: const Text('Edit Phone Number'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone',
-                  hintText: 'Enter new phone number',
-                ),
-              ),
-              if (errorMsg != null) ...[
-                const SizedBox(height: 8),
-                Text(errorMsg!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
-              ],
-              if (saving) ...[
-                const SizedBox(height: 16),
-                const Center(child: CircularProgressIndicator()),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final newPhone = phoneCtrl.text.trim();
-                      if (newPhone.isEmpty) {
-                        setDialogState(() => errorMsg = 'Phone number cannot be empty');
-                        return;
-                      }
-                      setDialogState(() {
-                        saving = true;
-                        errorMsg = null;
-                      });
-                      try {
-                        await ref
-                            .read(profileNotifierProvider.notifier)
-                            .save({'phone': newPhone});
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        _showSnack('Phone number updated successfully');
-                      } catch (e) {
-                        setDialogState(() {
-                          errorMsg = _extractError(e);
-                          saving = false;
-                        });
-                      }
-                    },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-    phoneCtrl.dispose();
+    nameCtrl.dispose();
   }
 
   void _showSnack(String message, {bool isError = false}) {
@@ -519,8 +436,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 16),
             _PersonalDetailsCard(
               profile: profile,
-              onEditEmail: () => _showEditEmailDialog(profile),
-              onEditPhone: () => _showEditPhoneDialog(profile),
               onVerifyEmail: _showVerifyEmailDialog,
               onVerifyPhone: _showVerifyPhoneDialog,
             ),
@@ -626,7 +541,7 @@ class _SettingsCard extends StatelessWidget {
                   ],
                 ),
               ),
-
+              ?trailing,
             ],
           ),
           const SizedBox(height: 16),
@@ -704,15 +619,11 @@ class _AppearanceCard extends ConsumerWidget {
 
 class _PersonalDetailsCard extends StatelessWidget {
   final VendorProfile profile;
-  final VoidCallback onEditEmail;
-  final VoidCallback onEditPhone;
   final VoidCallback onVerifyEmail;
   final VoidCallback onVerifyPhone;
 
   const _PersonalDetailsCard({
     required this.profile,
-    required this.onEditEmail,
-    required this.onEditPhone,
     required this.onVerifyEmail,
     required this.onVerifyPhone,
   });
@@ -730,7 +641,6 @@ class _PersonalDetailsCard extends StatelessWidget {
             value: profile.email ?? '',
             verified: profile.isEmailVerified,
             onVerify: profile.isEmailVerified ?? false ? null : onVerifyEmail,
-            onEdit: onEditEmail,
           ),
           const _RowDivider(),
           _DetailRow(
@@ -738,8 +648,8 @@ class _PersonalDetailsCard extends StatelessWidget {
             value: profile.phone ?? '',
             verified: profile.isPhoneVerified,
             onVerify: profile.isPhoneVerified ?? false ? null : onVerifyPhone,
-            onEdit: onEditPhone,
           ),
+
         ],
       ),
     );
@@ -760,14 +670,12 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final bool? verified;
   final VoidCallback? onVerify;
-  final VoidCallback? onEdit;
 
   const _DetailRow({
     required this.label,
     required this.value,
     this.verified,
     this.onVerify,
-    this.onEdit,
   });
 
   @override
@@ -793,17 +701,6 @@ class _DetailRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (onEdit != null) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onEdit,
-              child: Icon(
-                Icons.edit_outlined,
-                size: 16,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
           if (verified != null) ...[
             const SizedBox(width: 8),
             if (verified!)
