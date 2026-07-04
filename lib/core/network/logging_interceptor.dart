@@ -1,45 +1,16 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
 import '../utils/app_logger.dart';
 
 class LoggingInterceptor extends Interceptor {
-
-  static String generateCurlCommand(RequestOptions options) {
-    String curl = 'curl -X ${options.method}';
-
-    // Add headers
-    options.headers.forEach((key, value) {
-      curl += ' -H "$key: $value"';
-    });
-
-    // Handle FormData separately
-    if (options.data is FormData) {
-      final formData = options.data as FormData;
-
-      for (final field in formData.fields) {
-        curl += ' -F "${field.key}=${field.value}"';
-      }
-      for (final MapEntry<String, MultipartFile> entry in formData.files) {
-        final fieldName = entry.key;
-        final multipartFile = entry.value;
-        final filename = multipartFile.filename ?? 'file';
-        curl += ' -F "$fieldName=@<path_to_$filename>;filename=$filename"';
-      }
-    } else if (options.data != null) {
-      curl += ' -d \'${options.data}\'';
-    }
-
-    // Add URL
-    curl += ' "${options.uri}"';
-
-    return curl;
-  }
-
-
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final curl = _buildCurl(options);
+  void onRequest(
+      RequestOptions options,
+      RequestInterceptorHandler handler,
+      ) {
     final headers = _formatMap(options.headers);
     final body = options.data != null ? _prettyJson(options.data) : 'none';
 
@@ -54,19 +25,28 @@ $headers
 BODY:
 $body
 
+=============================================
+''');
 
-=============================================''');
-
-    debugPrint('CURL-  ${generateCurlCommand(options)}',wrapWidth: 1000);
+    debugPrint(
+      _buildCurl(options),
+      wrapWidth: 1000,
+    );
 
     handler.next(options);
   }
 
   @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
+  void onResponse(
+      Response response,
+      ResponseInterceptorHandler handler,
+      ) {
     final headers = _formatMap(
-      response.headers.map.map((k, v) => MapEntry(k, v.join(', '))),
+      response.headers.map.map(
+            (k, v) => MapEntry(k, v.join(', ')),
+      ),
     );
+
     final body = _prettyJson(response.data);
 
     AppLogger.info('''
@@ -81,15 +61,17 @@ $headers
 BODY:
 $body
 
-=============================================''');
+=============================================
+''');
 
     handler.next(response);
   }
 
-
-
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
+  void onError(
+      DioException err,
+      ErrorInterceptorHandler handler,
+      ) {
     final requestHeaders = _formatMap(err.requestOptions.headers);
 
     final requestBody = err.requestOptions.data != null
@@ -135,48 +117,80 @@ ${err.message}
   }
 
   String _buildCurl(RequestOptions options) {
-    final sb = StringBuffer('curl -X ${options.method}');
-    options.headers.forEach((k, v) => sb.write(" \\\n-H '$k: $v'"));
-    if (options.data is FormData) {
-      final formData = options.data as FormData;
-      for (final field in formData.fields) {
-        sb.write(' \\\n-F "${field.key}=${field.value}"');
+    final sb = StringBuffer();
+
+    sb.write('curl -X ${options.method}');
+
+    // Headers
+    options.headers.forEach((key, value) {
+      sb.write(' \\\n-H "$key: $value"');
+    });
+
+    // Body
+    final data = options.data;
+
+    if (data != null) {
+      if (data is FormData) {
+        for (final field in data.fields) {
+          sb.write(' \\\n-F "${field.key}=${field.value}"');
+        }
+
+        for (final file in data.files) {
+          final filename = file.value.filename ?? 'file';
+          sb.write(
+            ' \\\n-F "${file.key}=@<path_to_$filename>;filename=$filename"',
+          );
+        }
+      } else if (data is String) {
+        sb.write(" \\\n-d '$data'");
+      } else {
+        sb.write(" \\\n-d '${jsonEncode(data)}'");
       }
-      for (final file in formData.files) {
-        sb.write(' \\\n-F "${file.key}=@<${file.value.filename ?? 'file'}>"');
-      }
-    } else if (options.data != null) {
-      sb.write(" \\\n-d '${jsonEncode(options.data)}'");
     }
-    sb.write(" \\\n'${options.uri}'");
+
+    sb.write(' \\\n"${options.uri}"');
+
     return sb.toString();
   }
 
   String _formatMap(Map<String, dynamic> map) {
     if (map.isEmpty) return '(empty)';
-    return map.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+
+    return map.entries
+        .map((e) => '${e.key}: ${e.value}')
+        .join('\n');
   }
 
   String _prettyJson(dynamic data) {
     try {
+      if (data == null) return 'null';
+
       if (data is FormData) {
         final map = <String, dynamic>{};
 
-        // Normal fields
         for (final field in data.fields) {
           map[field.key] = field.value;
         }
 
-        // Files
         for (final file in data.files) {
           map[file.key] = {
             'filename': file.value.filename,
-            'contentType': file.value.contentType.toString(),
+            'contentType': file.value.contentType?.toString(),
             'length': file.value.length,
           };
         }
 
         return const JsonEncoder.withIndent('  ').convert(map);
+      }
+
+      if (data is String) {
+        try {
+          return const JsonEncoder.withIndent(
+            '  ',
+          ).convert(jsonDecode(data));
+        } catch (_) {
+          return data;
+        }
       }
 
       return const JsonEncoder.withIndent('  ').convert(data);

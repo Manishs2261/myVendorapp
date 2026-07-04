@@ -9,6 +9,7 @@ import '../../../../shared/widgets/error_view.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../profile/domain/profile_models.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../../../core/utils/error_parser.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -60,7 +61,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _confirmPasswordCtrl.clear();
       _showSnack('Password changed successfully');
     } catch (e) {
-      _showSnack(_extractError(e), isError: true);
+      _showSnack(extractError(e), isError: true);
     } finally {
       if (mounted) setState(() => _isChangingPassword = false);
     }
@@ -77,8 +78,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+      builder: (ctx) => _DialogControllerManager(
+        controllers: [otpCtrl],
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -148,7 +151,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           });
                         } catch (e) {
                           setDialogState(() {
-                            errorMsg = _extractError(e);
+                            errorMsg = extractError(e);
                             sending = false;
                           });
                         }
@@ -175,7 +178,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _showSnack('Email verified successfully');
                         } catch (e) {
                           setDialogState(() {
-                            errorMsg = _extractError(e);
+                            errorMsg = extractError(e);
                             confirming = false;
                           });
                         }
@@ -185,8 +188,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ),
-    );
-    otpCtrl.dispose();
+    ),
+  );
   }
 
   Future<void> _showVerifyPhoneDialog() async {
@@ -200,8 +203,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+      builder: (ctx) => _DialogControllerManager(
+        controllers: [otpCtrl],
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -271,7 +276,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           });
                         } catch (e) {
                           setDialogState(() {
-                            errorMsg = _extractError(e);
+                            errorMsg = extractError(e);
                             sending = false;
                           });
                         }
@@ -298,7 +303,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _showSnack('Phone verified successfully');
                         } catch (e) {
                           setDialogState(() {
-                            errorMsg = _extractError(e);
+                            errorMsg = extractError(e);
                             confirming = false;
                           });
                         }
@@ -308,42 +313,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ),
-    );
-    otpCtrl.dispose();
+    ),
+  );
   }
 
-  Future<void> _showEditProfileDialog(VendorProfile profile) async {
-    final nameCtrl = TextEditingController(text: profile.name);
-    bool saving = false;
+
+  Future<void> _showEditEmailDialog(VendorProfile profile) async {
+    final remote = ref.read(settingsRemoteSourceProvider);
+    final emailCtrl = TextEditingController(text: profile.email);
+    bool otpSent = false;
+    bool sending = false;
+    bool confirming = false;
     String? errorMsg;
+    final otpCtrl = TextEditingController();
 
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+      builder: (ctx) => _DialogControllerManager(
+        controllers: [emailCtrl, otpCtrl],
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: AppColors.border),
           ),
-          title: const Text('Edit Personal Details'),
+          title: const Text('Edit Email'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  hintText: 'Your business name',
+              if (!otpSent) ...[
+                Text(
+                  'Enter your new email address. We will send a verification OTP to it.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
-              ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'New Email',
+                    hintText: 'Enter new email',
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'Enter the 6-digit OTP sent to ${emailCtrl.text.trim()}:',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: otpCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '------',
+                    counterText: '',
+                  ),
+                ),
+              ],
               if (errorMsg != null) ...[
                 const SizedBox(height: 8),
                 Text(errorMsg!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
               ],
-              if (saving) ...[
-                const SizedBox(height: 16),
+              if (sending || confirming) ...[
+                const SizedBox(height: 12),
                 const Center(child: CircularProgressIndicator()),
               ],
             ],
@@ -353,38 +395,213 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      if (nameCtrl.text.trim().isEmpty) {
-                        setDialogState(() => errorMsg = 'Name cannot be empty');
-                        return;
-                      }
-                      setDialogState(() {
-                        saving = true;
-                        errorMsg = null;
-                      });
-                      try {
-                        await ref
-                            .read(profileNotifierProvider.notifier)
-                            .save({'business_name': nameCtrl.text.trim()});
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        _showSnack('Profile updated');
-                      } catch (e) {
+            if (!otpSent)
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (email.isEmpty) {
+                          setDialogState(() => errorMsg = 'Email cannot be empty');
+                          return;
+                        }
                         setDialogState(() {
-                          errorMsg = _extractError(e);
-                          saving = false;
+                          sending = true;
+                          errorMsg = null;
                         });
-                      }
-                    },
-              child: const Text('Save'),
-            ),
+                        try {
+                          await remote.sendEmailOtp(email: email);
+                          setDialogState(() {
+                            otpSent = true;
+                            sending = false;
+                          });
+                        } catch (e) {
+                          setDialogState(() {
+                            errorMsg = extractError(e);
+                            sending = false;
+                          });
+                        }
+                      },
+                child: const Text('Send OTP'),
+              ),
+            if (otpSent)
+              FilledButton(
+                onPressed: confirming
+                    ? null
+                    : () async {
+                        final otp = otpCtrl.text.trim();
+                        if (otp.length != 6) {
+                          setDialogState(() => errorMsg = 'Enter the 6-digit OTP');
+                          return;
+                        }
+                        setDialogState(() {
+                          confirming = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          await remote.confirmEmailOtp(otp);
+                          await ref
+                              .read(profileNotifierProvider.notifier)
+                              .save({'email': emailCtrl.text.trim()});
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _showSnack('Email updated successfully');
+                        } catch (e) {
+                          setDialogState(() {
+                            errorMsg = extractError(e);
+                            confirming = false;
+                          });
+                        }
+                      },
+                child: const Text('Verify & Save'),
+              ),
           ],
         ),
       ),
-    );
-    nameCtrl.dispose();
+    ),
+  );
+  }
+
+  Future<void> _showEditPhoneDialog(VendorProfile profile) async {
+    final remote = ref.read(settingsRemoteSourceProvider);
+    final phoneCtrl = TextEditingController(text: profile.phone);
+    bool otpSent = false;
+    bool sending = false;
+    bool confirming = false;
+    String? errorMsg;
+    final otpCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _DialogControllerManager(
+        controllers: [phoneCtrl, otpCtrl],
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: AppColors.border),
+          ),
+          title: const Text('Edit Phone Number'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!otpSent) ...[
+                Text(
+                  'Enter your new phone number. We will send a verification OTP to it.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'New Phone',
+                    hintText: 'Enter new phone number',
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'Enter the 6-digit OTP sent to ${phoneCtrl.text.trim()}:',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: otpCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '------',
+                    counterText: '',
+                  ),
+                ),
+              ],
+              if (errorMsg != null) ...[
+                const SizedBox(height: 8),
+                Text(errorMsg!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+              ],
+              if (sending || confirming) ...[
+                const SizedBox(height: 12),
+                const Center(child: CircularProgressIndicator()),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            if (!otpSent)
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final phone = phoneCtrl.text.trim();
+                        if (phone.isEmpty) {
+                          setDialogState(() => errorMsg = 'Phone number cannot be empty');
+                          return;
+                        }
+                        setDialogState(() {
+                          sending = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          await remote.sendPhoneOtp(phone: phone);
+                          setDialogState(() {
+                            otpSent = true;
+                            sending = false;
+                          });
+                        } catch (e) {
+                          setDialogState(() {
+                            errorMsg = extractError(e);
+                            sending = false;
+                          });
+                        }
+                      },
+                child: const Text('Send OTP'),
+              ),
+            if (otpSent)
+              FilledButton(
+                onPressed: confirming
+                    ? null
+                    : () async {
+                        final otp = otpCtrl.text.trim();
+                        if (otp.length != 6) {
+                          setDialogState(() => errorMsg = 'Enter the 6-digit OTP');
+                          return;
+                        }
+                        setDialogState(() {
+                          confirming = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          await remote.confirmPhoneOtp(otp);
+                          await ref
+                              .read(profileNotifierProvider.notifier)
+                              .save({'phone': phoneCtrl.text.trim()});
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _showSnack('Phone updated successfully');
+                        } catch (e) {
+                          setDialogState(() {
+                            errorMsg = extractError(e);
+                            confirming = false;
+                          });
+                        }
+                      },
+                child: const Text('Verify & Save'),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
   }
 
   void _showSnack(String message, {bool isError = false}) {
@@ -397,15 +614,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
-  }
-
-  String _extractError(Object e) {
-    final str = e.toString();
-    final match = RegExp(r'"detail":\s*"([^"]+)"').firstMatch(str);
-    if (match != null) return match.group(1)!;
-    final match2 = RegExp(r'detail: (.+)$', multiLine: true).firstMatch(str);
-    if (match2 != null) return match2.group(1)!.trim();
-    return str.length > 120 ? '${str.substring(0, 120)}...' : str;
   }
 
   @override
@@ -438,6 +646,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               profile: profile,
               onVerifyEmail: _showVerifyEmailDialog,
               onVerifyPhone: _showVerifyPhoneDialog,
+              onEditEmail: () => _showEditEmailDialog(profile),
+              onEditPhone: () => _showEditPhoneDialog(profile),
             ),
             const SizedBox(height: 16),
             _ChangePasswordCard(
@@ -621,11 +831,15 @@ class _PersonalDetailsCard extends StatelessWidget {
   final VendorProfile profile;
   final VoidCallback onVerifyEmail;
   final VoidCallback onVerifyPhone;
+  final VoidCallback onEditEmail;
+  final VoidCallback onEditPhone;
 
   const _PersonalDetailsCard({
     required this.profile,
     required this.onVerifyEmail,
     required this.onVerifyPhone,
+    required this.onEditEmail,
+    required this.onEditPhone,
   });
 
   @override
@@ -641,6 +855,7 @@ class _PersonalDetailsCard extends StatelessWidget {
             value: profile.email ?? '',
             verified: profile.isEmailVerified,
             onVerify: profile.isEmailVerified ?? false ? null : onVerifyEmail,
+            onEdit: onEditEmail,
           ),
           const _RowDivider(),
           _DetailRow(
@@ -648,6 +863,7 @@ class _PersonalDetailsCard extends StatelessWidget {
             value: profile.phone ?? '',
             verified: profile.isPhoneVerified,
             onVerify: profile.isPhoneVerified ?? false ? null : onVerifyPhone,
+            onEdit: onEditPhone,
           ),
 
         ],
@@ -670,12 +886,14 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final bool? verified;
   final VoidCallback? onVerify;
+  final VoidCallback? onEdit;
 
   const _DetailRow({
     required this.label,
     required this.value,
     this.verified,
     this.onVerify,
+    this.onEdit,
   });
 
   @override
@@ -695,10 +913,28 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (onEdit != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: onEdit,
+                    child: const Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (verified != null) ...[
@@ -960,5 +1196,33 @@ class _SessionCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _DialogControllerManager extends StatefulWidget {
+  final List<TextEditingController> controllers;
+  final Widget child;
+
+  const _DialogControllerManager({
+    required this.controllers,
+    required this.child,
+  });
+
+  @override
+  State<_DialogControllerManager> createState() => _DialogControllerManagerState();
+}
+
+class _DialogControllerManagerState extends State<_DialogControllerManager> {
+  @override
+  void dispose() {
+    for (final controller in widget.controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

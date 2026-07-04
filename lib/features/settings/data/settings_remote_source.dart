@@ -24,8 +24,11 @@ class SettingsRemoteSource {
     await _dio.post(ApiEndpoints.verifyEmailConfirm, data: {'otp': otp});
   }
 
-  Future<void> sendPhoneOtp() async {
-    await _dio.post(ApiEndpoints.verifyPhoneSend);
+  Future<void> sendPhoneOtp({String? phone}) async {
+    await _dio.post(
+      ApiEndpoints.verifyPhoneSend,
+      data: phone != null ? {'phone': phone} : null,
+    );
   }
 
   Future<void> confirmPhoneOtp(String otp) async {
