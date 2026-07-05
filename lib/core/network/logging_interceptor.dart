@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 
 import '../utils/app_logger.dart';
 
@@ -28,9 +28,15 @@ $body
 =============================================
 ''');
 
-    debugPrint(
-      _buildCurl(options),
-      wrapWidth: 1000,
+    developer.log(
+      '''
+================== CURL ==================
+
+${_buildCurl(options)}
+
+==========================================
+''',
+      name: 'API CURL',
     );
 
     handler.next(options);
@@ -110,6 +116,10 @@ $responseBody
 MESSAGE:
 ${err.message}
 
+CURL:
+
+${_buildCurl(err.requestOptions)}
+
 ===================================================
 ''');
 
@@ -121,34 +131,31 @@ ${err.message}
 
     sb.write('curl -X ${options.method}');
 
-    // Headers
     options.headers.forEach((key, value) {
-      sb.write(' \\\n-H "$key: $value"');
+      sb.write(' -H "$key: $value"');
     });
 
-    // Body
     final data = options.data;
 
     if (data != null) {
       if (data is FormData) {
         for (final field in data.fields) {
-          sb.write(' \\\n-F "${field.key}=${field.value}"');
+          sb.write(' -F "${field.key}=${field.value}"');
         }
 
         for (final file in data.files) {
           final filename = file.value.filename ?? 'file';
           sb.write(
-            ' \\\n-F "${file.key}=@<path_to_$filename>;filename=$filename"',
-          );
+              ' -F "${file.key}=@<path_to_$filename>;filename=$filename"');
         }
       } else if (data is String) {
-        sb.write(" \\\n-d '$data'");
+        sb.write(" -d '$data'");
       } else {
-        sb.write(" \\\n-d '${jsonEncode(data)}'");
+        sb.write(" -d '${jsonEncode(data)}'");
       }
     }
 
-    sb.write(' \\\n"${options.uri}"');
+    sb.write(' "${options.uri}"');
 
     return sb.toString();
   }
@@ -185,9 +192,8 @@ ${err.message}
 
       if (data is String) {
         try {
-          return const JsonEncoder.withIndent(
-            '  ',
-          ).convert(jsonDecode(data));
+          return const JsonEncoder.withIndent('  ')
+              .convert(jsonDecode(data));
         } catch (_) {
           return data;
         }

@@ -25,7 +25,8 @@ class RecentProduct {
       price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
       status: json['status'] as String? ?? 'active',
       clickCount: json['click_count'] as int? ?? 0,
-      imageUrls: (json['images'] as List?)
+      imageUrls:
+          (json['images'] as List?)
               ?.map((e) => e is Map ? e['url'] as String? ?? '' : e as String)
               .where((u) => u.isNotEmpty)
               .toList() ??
@@ -34,14 +35,14 @@ class RecentProduct {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        if (categoryName != null) 'category_name': categoryName,
-        'price': price,
-        'status': status,
-        'click_count': clickCount,
-        'images': imageUrls.map((u) => {'url': u}).toList(),
-      };
+    'id': id,
+    'name': name,
+    if (categoryName != null) 'category_name': categoryName,
+    'price': price,
+    'status': status,
+    'click_count': clickCount,
+    'images': imageUrls.map((u) => {'url': u}).toList(),
+  };
 }
 
 class DashboardOverview {
@@ -53,6 +54,8 @@ class DashboardOverview {
   final int inactiveProducts;
   final int totalViews;
   final int completionScore;
+  final bool? isVerified;
+  final bool? verificationRequested;
   final List<RecentProduct> recentProducts;
 
   const DashboardOverview({
@@ -64,6 +67,8 @@ class DashboardOverview {
     required this.inactiveProducts,
     required this.totalViews,
     this.completionScore = 0,
+    this.isVerified,
+    this.verificationRequested,
     required this.recentProducts,
   });
 
@@ -76,8 +81,11 @@ class DashboardOverview {
       activeProducts: json['active_products'] as int? ?? 0,
       inactiveProducts: json['inactive_products'] as int? ?? 0,
       totalViews: json['total_views'] as int? ?? 0,
+      isVerified: json["is_verified"],
+      verificationRequested: json["verification_requested"],
       completionScore: json['completion_score'] as int? ?? 0,
-      recentProducts: (json['recent_products'] as List?)
+      recentProducts:
+          (json['recent_products'] as List?)
               ?.map((e) => RecentProduct.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -85,14 +93,16 @@ class DashboardOverview {
   }
 
   Map<String, dynamic> toJson() => {
-        'total_revenue': totalRevenue,
-        'total_orders': totalOrders,
-        'total_products': totalProducts,
-        'pending_orders': pendingOrders,
-        'active_products': activeProducts,
-        'inactive_products': inactiveProducts,
-        'total_views': totalViews,
-        'completion_score': completionScore,
-        'recent_products': recentProducts.map((p) => p.toJson()).toList(),
-      };
+    'total_revenue': totalRevenue,
+    'total_orders': totalOrders,
+    'total_products': totalProducts,
+    'pending_orders': pendingOrders,
+    'active_products': activeProducts,
+    'inactive_products': inactiveProducts,
+    'total_views': totalViews,
+    "is_verified": isVerified,
+    "verification_requested": verificationRequested,
+    'completion_score': completionScore,
+    'recent_products': recentProducts.map((p) => p.toJson()).toList(),
+  };
 }

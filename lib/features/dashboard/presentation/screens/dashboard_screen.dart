@@ -25,22 +25,9 @@ class DashboardScreen extends ConsumerWidget {
     final analyticsAsync = ref.watch(shopAnalyticsNotifierProvider);
     final period = ref.watch(shopAnalyticsPeriodProvider);
     final notifier = ref.read(shopAnalyticsNotifierProvider.notifier);
-   final shopAsync = ref.watch(shopNotifierProvider);
     final dashboardAsync = ref.watch(dashboardNotifierProvider);
 
     return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: shopAsync.maybeWhen(
-        data: (shop) {
-          final totalProducts = dashboardAsync.valueOrNull?.totalProducts ?? 0;
-          final profileFilled = (shop.completionScore * 13 / 100).round();
-          final effectiveScore = ((profileFilled + (totalProducts >= 5 ? 1 : 0)) / 14 * 100).round();
-          return (effectiveScore < 100 && !shop.verified)
-              ? _ShopCompletionBanner(score: effectiveScore)
-              : null;
-        },
-        orElse: () => null,
-      ),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu),
@@ -58,7 +45,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: shopAsync.when(
+      body: dashboardAsync.when(
         loading: () => ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: const [
@@ -73,14 +60,14 @@ class DashboardScreen extends ConsumerWidget {
           message: e.toString(),
           onRetry: () => ref.invalidate(shopNotifierProvider),
         ),
-        data: (shop) {
-          if (!shop.verified) {
+        data: (dashboard) {
+          if (!(dashboard.isVerified ?? false)) {
             final totalProducts = dashboardAsync.valueOrNull?.totalProducts ?? 0;
-            final profileFilled = (shop.completionScore * 13 / 100).round();
+            final profileFilled = (dashboard.completionScore * 13 / 100).round();
             final effectiveScore = ((profileFilled + (totalProducts >= 5 ? 1 : 0)) / 14 * 100).round();
             return _NotVerifiedView(
               completionScore: effectiveScore,
-              verificationRequested: shop.verificationRequested,
+              verificationRequested: dashboard.verificationRequested ?? false,
               onGoToProfile: () => context.go(RouteNames.shop),
             );
           }
@@ -243,26 +230,6 @@ class _NotVerifiedView extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (!isComplete) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: completionScore / 100,
-                  minHeight: 6,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  color: Colors.orange,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '$completionScore% complete',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
             const SizedBox(height: 28),
             FilledButton.icon(
               onPressed: onGoToProfile,
@@ -282,79 +249,7 @@ class _NotVerifiedView extends StatelessWidget {
   }
 }
 
-// ─── Shop Completion Banner ───────────────────────────────────────────────────
 
-class _ShopCompletionBanner extends StatelessWidget {
-  final int score;
-  const _ShopCompletionBanner({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = score >= 50 ? Colors.orange : Colors.red;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(16),
-        color: color.withValues(alpha: 0.12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => context.go(RouteNames.shop),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.storefront_outlined, color: color, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Complete your shop profile',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: color,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: score / 100,
-                          minHeight: 5,
-                          backgroundColor: Colors.white24,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '$score%',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ─── Sponsored Banner ─────────────────────────────────────────────────────────
 
