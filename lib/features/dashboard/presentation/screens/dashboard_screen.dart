@@ -91,7 +91,7 @@ class DashboardScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                 children: [
-                  if (analytics.sponsored != null) ...[
+                  if (analytics.sponsored != null && analytics.sponsored!.active) ...[
                     _SponsoredBanner(info: analytics.sponsored!),
                     const SizedBox(height: 16),
                   ],
@@ -452,14 +452,15 @@ class _MetricsGrid extends StatelessWidget {
       ),
     ];
 
-    return SizedBox(
-      height: 96,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, i) => _MetricCard(data: cards[i]),
-      ),
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: cards.map((card) {
+        return SizedBox(
+          width: 170,
+          child: _MetricCard(data: card),
+        );
+      }).toList(),
     );
   }
 }
