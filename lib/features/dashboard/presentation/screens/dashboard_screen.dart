@@ -9,7 +9,6 @@ import '../../../../core/widgets/main_shell.dart';
 import '../../../../shared/widgets/error_view.dart';
 import '../../../../shared/widgets/last_updated_chip.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
-import '../../../shop/presentation/providers/shop_provider.dart';
 import '../../domain/shop_analytics_models.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/shop_analytics_provider.dart';
@@ -58,7 +57,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         error: (e, _) => ErrorView(
           message: e.toString(),
-          onRetry: () => ref.invalidate(shopNotifierProvider),
+          onRetry: () => ref.invalidate(dashboardNotifierProvider),
         ),
         data: (dashboard) {
           if (!(dashboard.isVerified ?? false)) {

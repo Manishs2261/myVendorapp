@@ -33,7 +33,9 @@ class DashboardNotifier extends _$DashboardNotifier {
     );
 
     if (cached != null) {
-      Future.microtask(_backgroundRefresh);
+      if (!(cached.isVerified ?? false)) {
+        Future.microtask(_backgroundRefresh);
+      }
       return cached;
     }
 

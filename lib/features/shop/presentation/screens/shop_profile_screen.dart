@@ -296,7 +296,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
     }
   }
 
-  bool _isProfileComplete(Shop shop, int totalProducts) {
+  bool _isProfileComplete(Shop shop) {
     final checks = [
       shop.name != null && shop.name!.isNotEmpty,
       shop.description != null && shop.description!.isNotEmpty,
@@ -311,7 +311,6 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
       shop.longitude != null,
       shop.idDocumentUrl != null,
       shop.gallery != null && shop.gallery!.isNotEmpty,
-      totalProducts >= 5,
     ];
     return checks.every((c) => c);
   }
@@ -320,11 +319,10 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
   Widget build(BuildContext context) {
     ref.watch(isDarkModeProvider);
     final shopAsync = ref.watch(shopNotifierProvider);
-    final totalProducts =
-        ref.watch(dashboardNotifierProvider).valueOrNull?.totalProducts ?? 0;
+
 
     final shop = shopAsync.valueOrNull;
-    final isComplete = shop != null && _isProfileComplete(shop, totalProducts);
+    final isComplete = shop != null && _isProfileComplete(shop);
 
     ref.listen(shopNotifierProvider, (prev, next) {
       if (!_initialized && next.hasValue) {
@@ -515,7 +513,6 @@ class _ProfileCompletionBar extends StatelessWidget {
       ('Longitude',    shop.longitude != null),
       ('ID document',  shop.idDocumentUrl != null),
       ('Gallery',      shop.gallery != null && shop.gallery!.isNotEmpty),
-      ('5+ products',  totalProducts >= 5),
     ];
 
     final filled = checks.where((c) => c.$2).length;

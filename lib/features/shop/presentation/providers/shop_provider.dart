@@ -34,7 +34,9 @@ class ShopNotifier extends _$ShopNotifier {
       maxAge: _ttl,
     );
     if (cached != null) {
-      Future.microtask(_backgroundRefresh);
+      if (!(cached.isVerified ?? false)) {
+        Future.microtask(_backgroundRefresh);
+      }
       return cached;
     }
 
@@ -43,7 +45,9 @@ class ShopNotifier extends _$ShopNotifier {
       fromJson: Shop.fromJson,
     );
     if (stale != null) {
-      Future.microtask(_backgroundRefresh);
+      if (!(stale.isVerified ?? false)) {
+        Future.microtask(_backgroundRefresh);
+      }
       return stale;
     }
 
@@ -60,7 +64,13 @@ class ShopNotifier extends _$ShopNotifier {
   /// Re-fetches shop data even if the cache is still fresh, without showing
   /// a loading spinner. Call this when the Shop Profile screen opens so it
   /// always reflects the latest data instead of only refreshing on TTL expiry.
-  Future<void> refreshInBackground() => _backgroundRefresh();
+  Future<void> refreshInBackground() {
+    final currentShop = state.valueOrNull;
+    if (currentShop != null && (currentShop.isVerified ?? false)) {
+      return Future.value();
+    }
+    return _backgroundRefresh();
+  }
 
   Future<Shop> _fetchAndCache() async {
     final data = await ref.read(shopRepositoryProvider).getShop();
