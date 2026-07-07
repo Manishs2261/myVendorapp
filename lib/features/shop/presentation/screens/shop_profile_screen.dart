@@ -949,7 +949,7 @@ class _DetailsTab extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton(
-                    onPressed: onStatusToggle,
+                    onPressed: () => _confirmStatusToggle(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.orange,
                       side: const BorderSide(color: Colors.orange),
@@ -1078,6 +1078,35 @@ class _DetailsTab extends StatelessWidget {
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Confirm Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmStatusToggle(BuildContext context) {
+    final isActive = status == 'active';
+    final title = isActive ? 'Pause Shop?' : 'Resume Shop?';
+    final content = isActive
+        ? 'Are you sure you want to pause your shop? It will be hidden from customers.'
+        : 'Are you sure you want to resume your shop? It will become visible to customers again.';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onStatusToggle();
+            },
+            child: const Text('Confirm'),
           ),
         ],
       ),
