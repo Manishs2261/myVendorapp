@@ -88,7 +88,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
   }
 
   void _populateControllers(Shop shop) {
-    _nameCtrl.text = shop.shopName ?? shop.businessName;
+    _nameCtrl.text = shop.name ?? '';
     _descCtrl.text = shop.description ?? '';
     _gstCtrl.text = shop.gstNumber ?? '';
     _streetCtrl.text = shop.address ?? '';
@@ -288,7 +288,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
 
   bool _isProfileComplete(Shop shop, int totalProducts) {
     final checks = [
-      shop.shopName != null && shop.shopName!.isNotEmpty,
+      shop.name != null && shop.name!.isNotEmpty,
       shop.description != null && shop.description!.isNotEmpty,
       shop.address != null && shop.address!.isNotEmpty,
       shop.city != null && shop.city!.isNotEmpty,
@@ -300,7 +300,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
       shop.latitude != null,
       shop.longitude != null,
       shop.idDocumentUrl != null,
-      shop.gallery.isNotEmpty,
+      shop.gallery != null && shop.gallery!.isNotEmpty,
       totalProducts >= 5,
     ];
     return checks.every((c) => c);
@@ -337,7 +337,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
           ],
         ),
         actions: [
-          if (shop != null && shop.verified)
+          if (shop != null && (shop.isVerified ?? false))
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Chip(
@@ -348,7 +348,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
                 padding: EdgeInsets.zero,
               ),
             )
-          else if (shop != null && shop.verificationRequested)
+          else if (shop != null && (shop.verificationRequested ?? false))
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Chip(
@@ -409,7 +409,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
               ?.totalProducts ?? 0;
           return Column(
             children: [
-              if(!shop.verified)
+              if(!(shop.isVerified ?? false))
               _ProfileCompletionBar(shop: shop, totalProducts: totalProducts),
               Expanded(
                 child: Form(
@@ -439,7 +439,7 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
                         shop: shop,
                         onUploadLogo: _pickAndUploadLogo,
                         onUploadBanner: _pickAndUploadBanner,
-                        onUploadGallery: () => _pickAndUploadGallery(shop.gallery.length),
+                        onUploadGallery: () => _pickAndUploadGallery(shop.gallery?.length ?? 0),
                         onRemoveGallery: _removeGalleryImage,
                       ),
                       _LocationTab(
@@ -479,7 +479,7 @@ class _ProfileCompletionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checks = [
-      ('Shop name',    shop.shopName != null && shop.shopName!.isNotEmpty),
+      ('Shop name',    shop.name != null && shop.name!.isNotEmpty),
       ('Description',  shop.description != null && shop.description!.isNotEmpty),
       ('Address',      shop.address != null && shop.address!.isNotEmpty),
       ('City',         shop.city != null && shop.city!.isNotEmpty),
@@ -491,7 +491,7 @@ class _ProfileCompletionBar extends StatelessWidget {
       ('Latitude',     shop.latitude != null),
       ('Longitude',    shop.longitude != null),
       ('ID document',  shop.idDocumentUrl != null),
-      ('Gallery',      shop.gallery.isNotEmpty),
+      ('Gallery',      shop.gallery != null && shop.gallery!.isNotEmpty),
       ('5+ products',  totalProducts >= 5),
     ];
 
@@ -864,11 +864,11 @@ class _MediaTab extends StatelessWidget {
         const SizedBox(height: 16),
         _SectionCard(
           title: 'Shop Gallery',
-          titleSuffix: Text('${shop.gallery.length} / 10 images',
+          titleSuffix: Text('${shop.gallery?.length ?? 0} / 10 images',
               style: const TextStyle(fontSize: 12, color: Colors.white54)),
           children: [
             _GalleryGrid(
-              images: shop.gallery,
+              images: shop.gallery ?? [],
               onRemove: onRemoveGallery,
               onAdd: onUploadGallery,
               maxImages: 10,

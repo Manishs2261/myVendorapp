@@ -1,164 +1,201 @@
-class Shop {
-  final int id;
-  final String businessName;
-  final String? shopName;
-  final String? description;
-  final String? logoUrl;
-  final String? bannerUrl;
-  final String? address;
-  final String? city;
-  final String? state;
-  final String? pincode;
-  final double? latitude;
-  final double? longitude;
-  final String? contactPhone;
-  final String? contactEmail;
-  final String? whatsappNumber;
-  final String? businessType;
-  final String? gstNumber;
-  final String? idType;
-  final String? idDocumentUrl;
-  final List<String> gallery;
-  final String status;
-  final bool verified;
-  final bool verificationRequested;
-  final int completionScore;
-  final String? openingTime;
-  final String? closingTime;
-  final List<String> workingDays;
+// To parse this JSON data, do
+//
+//     final welcome = welcomeFromJson(jsonString);
 
-  const Shop({
-    required this.id,
-    required this.businessName,
-    this.shopName,
+import 'dart:convert';
+
+Shop welcomeFromJson(String str) => Shop.fromJson(json.decode(str));
+
+String welcomeToJson(Shop data) => json.encode(data.toJson());
+
+class Shop {
+  int? id;
+  int? vendorId;
+  String? name;
+  String? description;
+  String? address;
+  String? city;
+  String? state;
+  String? country;
+  String? pincode;
+  String? postalCode;
+  double? latitude;
+  double? longitude;
+  String? logoUrl;
+  String? bannerUrl;
+  List<String>? gallery;
+  String? status;
+  String? openingTime;
+  String? closingTime;
+  List<String>? workingDays;
+  String? contactPhone;
+  String? contactEmail;
+  String? whatsappNumber;
+  String? businessType;
+  String? idType;
+  String? idDocumentUrl;
+  String? gstNumber;
+  bool? isVerified;
+  bool? verificationRequested;
+  int? completionScore;
+
+  Shop({
+    this.id,
+    this.vendorId,
+    this.name,
     this.description,
-    this.logoUrl,
-    this.bannerUrl,
     this.address,
     this.city,
     this.state,
+    this.country,
     this.pincode,
+    this.postalCode,
     this.latitude,
     this.longitude,
+    this.logoUrl,
+    this.bannerUrl,
+    this.gallery,
+    this.status,
+    this.openingTime,
+    this.closingTime,
+    this.workingDays,
     this.contactPhone,
     this.contactEmail,
     this.whatsappNumber,
     this.businessType,
-    this.gstNumber,
     this.idType,
     this.idDocumentUrl,
-    this.gallery = const [],
-    required this.status,
-    required this.verified,
-    this.verificationRequested = false,
-    this.completionScore = 0,
-    this.openingTime,
-    this.closingTime,
-    this.workingDays = const [],
+    this.gstNumber,
+    this.isVerified,
+    this.verificationRequested,
+    this.completionScore,
   });
 
-  factory Shop.fromJson(Map<String, dynamic> json) {
-    List<String> parseStringList(dynamic value) {
-      if (value == null) return [];
-      if (value is List) return value.map((e) => e.toString()).toList();
-      return [];
-    }
-
-    return Shop(
-      id: json['id'] as int,
-      businessName: json['business_name'] as String? ?? json['name'] as String? ?? '',
-      shopName: json['name'] as String?,
-      description: json['description'] as String?,
-      logoUrl: json['logo_url'] as String?,
-      bannerUrl: json['banner_url'] as String?,
-      address: json['address'] as String?,
-      city: json['city'] as String?,
-      state: json['state'] as String?,
-      pincode: json['postal_code'] as String? ?? json['pincode'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      contactPhone: json['contact_phone'] as String?,
-      contactEmail: json['contact_email'] as String?,
-      whatsappNumber: json['whatsapp_number'] as String?,
-      businessType: json['business_type'] as String?,
-      gstNumber: json['gst_number'] as String?,
-      idType: json['id_type'] as String?,
-      idDocumentUrl: json['id_document_url'] as String?,
-      gallery: parseStringList(json['gallery']),
-      status: json['status'] as String? ?? 'pending',
-      verified: json['verified'] as bool? ?? json['is_verified'] as bool? ?? false,
-      verificationRequested: json['verification_requested'] as bool? ?? false,
-      completionScore: json['completion_score'] as int? ?? 0,
-      openingTime: json['opening_time'] as String?,
-      closingTime: json['closing_time'] as String?,
-      workingDays: parseStringList(json['working_days']),
-    );
-  }
+  factory Shop.fromJson(Map<String, dynamic> json) => Shop(
+    id: json["id"],
+    vendorId: json["vendor_id"],
+    name: json["name"],
+    description: json["description"],
+    address: json["address"],
+    city: json["city"],
+    state: json["state"],
+    country: json["country"],
+    pincode: json["pincode"],
+    postalCode: json["postal_code"],
+    latitude: json["latitude"]?.toDouble(),
+    longitude: json["longitude"]?.toDouble(),
+    logoUrl: json["logo_url"],
+    bannerUrl: json["banner_url"],
+    gallery: json["gallery"] == null ? [] : List<String>.from(json["gallery"]!.map((x) => x)),
+    status: json["status"],
+    openingTime: json["opening_time"],
+    closingTime: json["closing_time"],
+    workingDays: json["working_days"] == null ? [] : List<String>.from(json["working_days"]!.map((x) => x)),
+    contactPhone: json["contact_phone"],
+    contactEmail: json["contact_email"],
+    whatsappNumber: json["whatsapp_number"],
+    businessType: json["business_type"],
+    idType: json["id_type"],
+    idDocumentUrl: json["id_document_url"],
+    gstNumber: json["gst_number"],
+    isVerified: json["is_verified"],
+    verificationRequested: json["verification_requested"],
+    completionScore: json["completion_score"],
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'business_name': businessName,
-        if (shopName != null) 'name': shopName,
-        if (description != null) 'description': description,
-        if (logoUrl != null) 'logo_url': logoUrl,
-        if (bannerUrl != null) 'banner_url': bannerUrl,
-        if (address != null) 'address': address,
-        if (city != null) 'city': city,
-        if (state != null) 'state': state,
-        if (pincode != null) 'postal_code': pincode,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-        if (contactPhone != null) 'contact_phone': contactPhone,
-        if (contactEmail != null) 'contact_email': contactEmail,
-        if (whatsappNumber != null) 'whatsapp_number': whatsappNumber,
-        if (businessType != null) 'business_type': businessType,
-        if (gstNumber != null) 'gst_number': gstNumber,
-        if (idType != null) 'id_type': idType,
-        if (idDocumentUrl != null) 'id_document_url': idDocumentUrl,
-        'gallery': gallery,
-        'status': status,
-        'verified': verified,
-        'verification_requested': verificationRequested,
-        'completion_score': completionScore,
-        if (openingTime != null) 'opening_time': openingTime,
-        if (closingTime != null) 'closing_time': closingTime,
-        'working_days': workingDays,
-      };
+    "id": id,
+    "vendor_id": vendorId,
+    "name": name,
+    "description": description,
+    "address": address,
+    "city": city,
+    "state": state,
+    "country": country,
+    "pincode": pincode,
+    "postal_code": postalCode,
+    "latitude": latitude,
+    "longitude": longitude,
+    "logo_url": logoUrl,
+    "banner_url": bannerUrl,
+    "gallery": gallery == null ? [] : List<dynamic>.from(gallery!.map((x) => x)),
+    "status": status,
+    "opening_time": openingTime,
+    "closing_time": closingTime,
+    "working_days": workingDays == null ? [] : List<dynamic>.from(workingDays!.map((x) => x)),
+    "contact_phone": contactPhone,
+    "contact_email": contactEmail,
+    "whatsapp_number": whatsappNumber,
+    "business_type": businessType,
+    "id_type": idType,
+    "id_document_url": idDocumentUrl,
+    "gst_number": gstNumber,
+    "is_verified": isVerified,
+    "verification_requested": verificationRequested,
+    "completion_score": completionScore,
+  };
 
   Shop copyWith({
+    int? id,
+    int? vendorId,
+    String? name,
+    String? description,
+    String? address,
+    String? city,
+    String? state,
+    String? country,
+    String? pincode,
+    String? postalCode,
+    double? latitude,
+    double? longitude,
     String? logoUrl,
     String? bannerUrl,
     List<String>? gallery,
+    String? status,
+    String? openingTime,
+    String? closingTime,
+    List<String>? workingDays,
+    String? contactPhone,
+    String? contactEmail,
+    String? whatsappNumber,
+    String? businessType,
+    String? idType,
     String? idDocumentUrl,
+    String? gstNumber,
+    bool? isVerified,
+    bool? verificationRequested,
+    int? completionScore,
   }) {
     return Shop(
-      id: id,
-      businessName: businessName,
-      shopName: shopName,
-      description: description,
+      id: id ?? this.id,
+      vendorId: vendorId ?? this.vendorId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      country: country ?? this.country,
+      pincode: pincode ?? this.pincode,
+      postalCode: postalCode ?? this.postalCode,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       logoUrl: logoUrl ?? this.logoUrl,
       bannerUrl: bannerUrl ?? this.bannerUrl,
-      address: address,
-      city: city,
-      state: state,
-      pincode: pincode,
-      latitude: latitude,
-      longitude: longitude,
-      contactPhone: contactPhone,
-      contactEmail: contactEmail,
-      whatsappNumber: whatsappNumber,
-      businessType: businessType,
-      gstNumber: gstNumber,
-      idType: idType,
-      idDocumentUrl: idDocumentUrl ?? this.idDocumentUrl,
       gallery: gallery ?? this.gallery,
-      status: status,
-      verified: verified,
-      verificationRequested: verificationRequested,
-      completionScore: completionScore,
-      openingTime: openingTime,
-      closingTime: closingTime,
-      workingDays: workingDays,
+      status: status ?? this.status,
+      openingTime: openingTime ?? this.openingTime,
+      closingTime: closingTime ?? this.closingTime,
+      workingDays: workingDays ?? this.workingDays,
+      contactPhone: contactPhone ?? this.contactPhone,
+      contactEmail: contactEmail ?? this.contactEmail,
+      whatsappNumber: whatsappNumber ?? this.whatsappNumber,
+      businessType: businessType ?? this.businessType,
+      idType: idType ?? this.idType,
+      idDocumentUrl: idDocumentUrl ?? this.idDocumentUrl,
+      gstNumber: gstNumber ?? this.gstNumber,
+      isVerified: isVerified ?? this.isVerified,
+      verificationRequested: verificationRequested ?? this.verificationRequested,
+      completionScore: completionScore ?? this.completionScore,
     );
   }
 }

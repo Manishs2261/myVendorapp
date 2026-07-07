@@ -117,7 +117,7 @@ class ShopNotifier extends _$ShopNotifier {
       final urls = await ref.read(shopRepositoryProvider).uploadGallery(files);
       final shop = prev.valueOrNull;
       if (shop == null) return ref.read(shopRepositoryProvider).getShop();
-      return shop.copyWith(gallery: [...shop.gallery, ...urls]);
+      return shop.copyWith(gallery: [...?shop.gallery, ...urls]);
     });
   }
 
@@ -129,7 +129,7 @@ class ShopNotifier extends _$ShopNotifier {
       final shop = prev.valueOrNull;
       if (shop == null) return ref.read(shopRepositoryProvider).getShop();
       return shop.copyWith(
-        gallery: shop.gallery.where((u) => u != url).toList(),
+        gallery: shop.gallery?.where((u) => u != url).toList(),
       );
     });
   }
