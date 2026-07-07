@@ -10,6 +10,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../profile/domain/profile_models.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../../core/utils/error_parser.dart';
+import '../../../../main.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -664,7 +665,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _SessionCard(
               onLogout: () async {
                 await ref.read(authNotifierProvider.notifier).logout();
-                if (context.mounted) context.go(RouteNames.login);
+                if (context.mounted) {
+                  AppStateContainer.of(context)?.resetScope();
+                }
               },
             ),
             const SizedBox(height: 32),

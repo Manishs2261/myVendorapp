@@ -13,6 +13,7 @@ import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/profile_provider.dart';
+import '../../../../main.dart';
 import '../../domain/profile_models.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -284,7 +285,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _ProfileSessionCard(
                   onLogout: () async {
                     await ref.read(authNotifierProvider.notifier).logout();
-                    if (context.mounted) context.go(RouteNames.login);
+                    if (context.mounted) {
+                      AppStateContainer.of(context)?.resetScope();
+                    }
                   },
                 ),
                 const SizedBox(height: 24),

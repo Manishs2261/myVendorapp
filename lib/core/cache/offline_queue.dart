@@ -58,6 +58,8 @@ class OfflineQueueService {
 
   Future<void> remove(String id) => _box.delete(id);
 
+  Future<void> clear() => _box.clear();
+
   bool get hasPending => _box.isNotEmpty;
 
   Future<void> processAll(Dio dio) async {

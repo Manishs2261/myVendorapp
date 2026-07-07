@@ -1,6 +1,9 @@
+import 'package:flutter/painting.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/providers/cache_providers.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../../../core/services/fcm_service.dart';
 import '../../data/auth_remote_source.dart';
@@ -72,7 +75,22 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> logout() async {
-    await ref.read(authRepositoryProvider).logout();
+    try {
+      await ref.read(authRepositoryProvider).logout();
+    } catch (_) {}
+    try {
+      await ref.read(cacheServiceProvider).clear();
+    } catch (_) {}
+    try {
+      await ref.read(offlineQueueProvider).clear();
+    } catch (_) {}
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (_) {}
+    try {
+      await DefaultCacheManager().emptyCache();
+    } catch (_) {}
     state = const AsyncData(null);
   }
 }

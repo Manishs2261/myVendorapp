@@ -33,14 +33,57 @@ Future<void> bootstrap(AppFlavor flavor) async {
   await FcmService.initialize();
 
   runApp(
-    ProviderScope(
-      overrides: [
-        cacheServiceProvider.overrideWithValue(cacheService),
-        offlineQueueProvider.overrideWithValue(offlineQueue),
-      ],
+    AppStateContainer(
+      cacheService: cacheService,
+      offlineQueue: offlineQueue,
       child: const MyShopVendorApp(),
     ),
   );
+}
+
+class AppStateContainer extends StatefulWidget {
+  final Widget child;
+  final CacheService cacheService;
+  final OfflineQueueService offlineQueue;
+
+  const AppStateContainer({
+    super.key,
+    required this.child,
+    required this.cacheService,
+    required this.offlineQueue,
+  });
+
+  static AppStateContainerState? of(BuildContext context) {
+    return context.findAncestorStateOfType<AppStateContainerState>();
+  }
+
+  @override
+  AppStateContainerState createState() => AppStateContainerState();
+}
+
+class AppStateContainerState extends State<AppStateContainer> {
+  Key _key = UniqueKey();
+
+  void resetScope() {
+    setState(() {
+      _key = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: ValueKey(_key),
+      child: ProviderScope(
+        key: _key,
+        overrides: [
+          cacheServiceProvider.overrideWithValue(widget.cacheService),
+          offlineQueueProvider.overrideWithValue(widget.offlineQueue),
+        ],
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 class MyShopVendorApp extends ConsumerStatefulWidget {
