@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/widgets/main_shell.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -48,6 +49,9 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
 
   String? _businessType;
   String? _idType;
+  String? _openingTime;
+  String? _closingTime;
+  List<String> _workingDays = [];
 
   GoogleMapController? _mapController;
   LatLng? _markerPosition;
@@ -106,6 +110,9 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
       orElse: () => _businessTypes.first,
     );
     _idType = shop.idType;
+    _openingTime = shop.openingTime;
+    _closingTime = shop.closingTime;
+    _workingDays = List<String>.from(shop.workingDays ?? []);
     if (shop.latitude != null && shop.longitude != null) {
       _markerPosition = LatLng(shop.latitude!, shop.longitude!);
     }
@@ -152,6 +159,9 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
       'whatsapp_number': _whatsappCtrl.text.trim(),
       if (_latCtrl.text.isNotEmpty) 'latitude': double.tryParse(_latCtrl.text),
       if (_lngCtrl.text.isNotEmpty) 'longitude': double.tryParse(_lngCtrl.text),
+      'opening_time': _openingTime,
+      'closing_time': _closingTime,
+      'working_days': _workingDays,
     };
 
     await ref.read(shopNotifierProvider.notifier).save(data);
@@ -434,6 +444,12 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
                         onBusinessTypeChanged: (v) => setState(() => _businessType = v),
                         onIdTypeChanged: (v) => setState(() => _idType = v),
                         onUploadDocument: _pickAndUploadIdDocument,
+                        openingTime: _openingTime,
+                        closingTime: _closingTime,
+                        workingDays: _workingDays,
+                        onOpeningTimeChanged: (v) => setState(() => _openingTime = v),
+                        onClosingTimeChanged: (v) => setState(() => _closingTime = v),
+                        onWorkingDaysChanged: (v) => setState(() => _workingDays = v),
                       ),
                       _MediaTab(
                         shop: shop,
@@ -603,6 +619,12 @@ class _DetailsTab extends StatelessWidget {
   final void Function(String?) onBusinessTypeChanged;
   final void Function(String?) onIdTypeChanged;
   final VoidCallback onUploadDocument;
+  final String? openingTime;
+  final String? closingTime;
+  final List<String> workingDays;
+  final void Function(String?) onOpeningTimeChanged;
+  final void Function(String?) onClosingTimeChanged;
+  final void Function(List<String>) onWorkingDaysChanged;
 
   static const _businessTypes = ['Retail', 'Wholesale', 'Service', 'Food & Beverage', 'Other'];
   static const _idTypes = ['Aadhaar Card', 'PAN Card', 'Passport', 'Voter ID', 'Driving License'];
@@ -624,7 +646,58 @@ class _DetailsTab extends StatelessWidget {
     required this.onBusinessTypeChanged,
     required this.onIdTypeChanged,
     required this.onUploadDocument,
+    required this.openingTime,
+    required this.closingTime,
+    required this.workingDays,
+    required this.onOpeningTimeChanged,
+    required this.onClosingTimeChanged,
+    required this.onWorkingDaysChanged,
   });
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  TimeOfDay? _parseTimeString(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return null;
+    final parts = timeStr.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isOpening) async {
+    final initialTimeStr = isOpening ? openingTime : closingTime;
+    final initialTime = _parseTimeString(initialTimeStr) ?? const TimeOfDay(hour: 9, minute: 0);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (picked != null) {
+      final formatted = _formatTimeOfDay(picked);
+      if (isOpening) {
+        onOpeningTimeChanged(formatted);
+      } else {
+        onClosingTimeChanged(formatted);
+      }
+    }
+  }
+
+  void _toggleDay(String day) {
+    final updated = List<String>.from(workingDays);
+    if (updated.contains(day)) {
+      updated.remove(day);
+    } else {
+      updated.add(day);
+    }
+    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    updated.sort((a, b) => order.indexOf(a).compareTo(order.indexOf(b)));
+    onWorkingDaysChanged(updated);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -646,6 +719,138 @@ class _DetailsTab extends StatelessWidget {
                 hint: 'Select Identity Type'),
             const SizedBox(height: 12),
             _DocumentUploader(url: idDocumentUrl, onTap: onUploadDocument),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Business Hours',
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Opening Time',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => _selectTime(context, true),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                openingTime ?? 'Select Time',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Icon(
+                                Icons.access_time_outlined,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Closing Time',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => _selectTime(context, false),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                closingTime ?? 'Select Time',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Icon(
+                                Icons.access_time_outlined,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Working Days',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) {
+                final isSelected = workingDays.contains(day);
+                return _DayChip(
+                  label: day,
+                  isSelected: isSelected,
+                  onTap: () => _toggleDay(day),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Click days to toggle. Shown on your public shop page.',
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -1109,6 +1314,52 @@ class _SectionCard extends StatelessWidget {
           const SizedBox(height: 16),
           ...children,
         ],
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DayChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.secondary
+              : Colors.transparent,
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected
+                ? Colors.white
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
