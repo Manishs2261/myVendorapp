@@ -34,6 +34,7 @@ class ApiEndpoints {
 
   // ---- Shop ----
   static const String shop = '/m/vendor/shop';
+  static const String shopStatus = '/m/vendor/shop/status';
   static const String shopRequestVerification = '/m/vendor/shop/request-verification';
   static const String shopReviewsStats = '/m/vendor/shop-reviews/stats';
   static const String shopReviews = '/m/vendor/shop-reviews';

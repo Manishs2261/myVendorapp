@@ -156,6 +156,39 @@ class ShopNotifier extends _$ShopNotifier {
         );
     state = AsyncValue.data(updated);
   }
+
+  Future<void> toggleShopStatus(String currentStatus) async {
+    final newStatus = currentStatus == 'active' ? 'inactive' : 'active';
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final updated =
+          await ref.read(shopRepositoryProvider).updateShopStatus(newStatus);
+      await ref.read(cacheServiceProvider).put(
+            CacheKeys.shopProfile,
+            updated,
+            toJson: (d) => d.toJson(),
+          );
+      return updated;
+    });
+  }
+
+  Future<void> closeShop(String? reason) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(shopRepositoryProvider).closeShop(reason);
+      final prev = state.valueOrNull;
+      if (prev != null) {
+        final closedShop = prev.copyWith(status: 'deleted');
+        await ref.read(cacheServiceProvider).put(
+              CacheKeys.shopProfile,
+              closedShop,
+              toJson: (d) => d.toJson(),
+            );
+        return closedShop;
+      }
+      return ref.read(shopRepositoryProvider).getShop();
+    });
+  }
 }
 
 @riverpod

@@ -43,4 +43,15 @@ class ShopRepository implements IShopRepository {
   @override
   Future<String> uploadIdDocument(XFile file) =>
       _remote.uploadIdDocument(file);
+
+  @override
+  Future<Shop> updateShopStatus(String status) async {
+    final data = await _remote.updateShopStatus(status);
+    return parseJson('Shop', data, Shop.fromJson);
+  }
+
+  @override
+  Future<void> closeShop(String? reason) async {
+    await _remote.closeShop(reason: reason);
+  }
 }

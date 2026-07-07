@@ -9,4 +9,6 @@ abstract class IShopRepository {
   Future<List<String>> uploadGallery(List<XFile> files);
   Future<void> removeGalleryImage(String url);
   Future<String> uploadIdDocument(XFile file);
+  Future<Shop> updateShopStatus(String status);
+  Future<void> closeShop(String? reason);
 }

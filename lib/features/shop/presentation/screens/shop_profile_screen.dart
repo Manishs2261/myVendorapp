@@ -450,6 +450,13 @@ class _ShopProfileScreenState extends ConsumerState<ShopProfileScreen>
                         onOpeningTimeChanged: (v) => setState(() => _openingTime = v),
                         onClosingTimeChanged: (v) => setState(() => _closingTime = v),
                         onWorkingDaysChanged: (v) => setState(() => _workingDays = v),
+                        status: shop.status,
+                        onStatusToggle: () => ref
+                            .read(shopNotifierProvider.notifier)
+                            .toggleShopStatus(shop.status ?? 'active'),
+                        onCloseShop: (reason) => ref
+                            .read(shopNotifierProvider.notifier)
+                            .closeShop(reason),
                       ),
                       _MediaTab(
                         shop: shop,
@@ -625,6 +632,9 @@ class _DetailsTab extends StatelessWidget {
   final void Function(String?) onOpeningTimeChanged;
   final void Function(String?) onClosingTimeChanged;
   final void Function(List<String>) onWorkingDaysChanged;
+  final String? status;
+  final VoidCallback onStatusToggle;
+  final void Function(String?) onCloseShop;
 
   static const _businessTypes = ['Retail', 'Wholesale', 'Service', 'Food & Beverage', 'Other'];
   static const _idTypes = ['Aadhaar Card', 'PAN Card', 'Passport', 'Voter ID', 'Driving License'];
@@ -652,6 +662,9 @@ class _DetailsTab extends StatelessWidget {
     required this.onOpeningTimeChanged,
     required this.onClosingTimeChanged,
     required this.onWorkingDaysChanged,
+    required this.status,
+    required this.onStatusToggle,
+    required this.onCloseShop,
   });
 
   String _formatTimeOfDay(TimeOfDay time) {
@@ -884,7 +897,190 @@ class _DetailsTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
+        if (status != 'deleted') ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Shop Management',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          _SectionCard(
+            title: 'Shop Status',
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: (status == 'active')
+                          ? Colors.green.withValues(alpha: 0.12)
+                          : Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (status == 'active')
+                            ? Colors.green.withValues(alpha: 0.5)
+                            : Colors.orange.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Text(
+                      status == 'active' ? 'Active' : 'Paused',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: (status == 'active') ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      status == 'active'
+                          ? 'Your shop is visible to customers.'
+                          : 'Your shop is hidden from customers.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: onStatusToggle,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      side: const BorderSide(color: Colors.orange),
+                    ),
+                    child: Text(status == 'active' ? 'Pause Shop' : 'Resume Shop'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Close Shop',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Permanently close your shop. This action cannot be undone.',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      FilledButton(
+                        onPressed: () => _confirmCloseShop(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Close Shop'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'This shop is permanently closed.',
+                    style: GoogleFonts.outfit(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
       ],
+    );
+  }
+
+  void _confirmCloseShop(BuildContext context) {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Permanently Close Shop?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to permanently close your shop? '
+              'This action is irreversible and all your products and data will be hidden.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Reason for closing (optional)',
+                hintText: 'e.g., Relocating, personal reasons...',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onCloseShop(reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim());
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Confirm Close'),
+          ),
+        ],
+      ),
     );
   }
 

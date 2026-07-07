@@ -124,4 +124,14 @@ class ShopRemoteSource {
     final response = await _dio.post(ApiEndpoints.shopIdDocument, data: formData);
     return (response.data as Map<String, dynamic>)['url'] as String;
   }
+
+  Future<Map<String, dynamic>> updateShopStatus(String status) async {
+    final response = await _dio.put(ApiEndpoints.shopStatus, data: {'status': status});
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> closeShop({String? reason}) async {
+    final response = await _dio.delete(ApiEndpoints.shop, data: {'reason': reason});
+    return response.data as Map<String, dynamic>;
+  }
 }
