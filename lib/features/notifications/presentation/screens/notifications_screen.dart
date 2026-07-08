@@ -32,6 +32,181 @@ String _formatTime(DateTime dt) {
   return DateFormat('MMM d').format(dt);
 }
 
+void _showNotificationDetails(BuildContext context, WidgetRef ref, NotificationModel n) {
+  if (!n.isRead) {
+    ref.read(notificationsNotifierProvider.notifier).markRead(n.id);
+  }
+
+  final theme = Theme.of(context);
+  final icon = _typeIcons[n.type] ?? Icons.notifications_outlined;
+  final label = _typeLabels[n.type] ?? n.type;
+  final formattedDate = DateFormat('MMMM d, yyyy • hh:mm a').format(n.createdAt);
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: theme.colorScheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        builder: (context, scrollController) {
+          return SingleChildScrollView(
+            controller: scrollController,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+                        ),
+                        child: Icon(icon, size: 24, color: theme.colorScheme.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(99),
+                                border: Border.all(color: theme.colorScheme.outlineVariant),
+                              ),
+                              child: Text(
+                                label,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        _formatTime(n.createdAt),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SelectableText(
+                    n.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    formattedDate,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                  const Divider(height: 32),
+                  SelectableText(
+                    n.body,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.5,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  if (n.data != null && n.data!.isNotEmpty) ...[
+                    const Divider(height: 32),
+                    Text(
+                      'Metadata',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.colorScheme.outlineVariant),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: n.data!.entries.map((entry) {
+                          final formattedKey = entry.key
+                              .split('_')
+                              .map((word) => word.isNotEmpty
+                                  ? '${word[0].toUpperCase()}${word.substring(1)}'
+                                  : '')
+                              .join(' ');
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: 120,
+                                  child: Text(
+                                    formattedKey,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.outline,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: SelectableText(
+                                    entry.value,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -103,7 +278,7 @@ class NotificationsScreen extends ConsumerWidget {
                     final n = notifications[i];
                     return _NotificationTile(
                       notification: n,
-                      onTap: () => notifier.markRead(n.id),
+                      onTap: () => _showNotificationDetails(ctx, ref, n),
                     );
                   },
                 ),
@@ -127,7 +302,7 @@ class _NotificationTile extends StatelessWidget {
     final label = _typeLabels[n.type] ?? n.type;
 
     return InkWell(
-      onTap: n.isRead ? null : onTap,
+      onTap: onTap,
       child: Container(
         color: n.isRead ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
