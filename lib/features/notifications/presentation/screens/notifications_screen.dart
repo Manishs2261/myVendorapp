@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/main_shell.dart';
 import '../../domain/notification_model.dart';
@@ -131,6 +132,34 @@ void _showNotificationDetails(BuildContext context, WidgetRef ref, NotificationM
                       color: theme.colorScheme.outline,
                     ),
                   ),
+                  if (n.image != null && n.image!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: n.image!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 200,
+                        placeholder: (context, url) => Container(
+                          height: 200,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          height: 200,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 48,
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const Divider(height: 32),
                   SelectableText(
                     n.body,
@@ -318,7 +347,25 @@ class _NotificationTile extends StatelessWidget {
                 color: theme.colorScheme.surfaceContainerHighest,
                 border: Border.all(color: theme.colorScheme.outlineVariant),
               ),
-              child: Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
+              clipBehavior: Clip.antiAlias,
+              child: n.image != null && n.image!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: n.image!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Icon(
+                        icon,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(width: 12),
             // Content

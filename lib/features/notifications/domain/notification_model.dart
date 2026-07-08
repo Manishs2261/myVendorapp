@@ -5,6 +5,7 @@ class NotificationModel {
   final String type;
   final bool isRead;
   final DateTime createdAt;
+  final String? image;
   final Map<String, String>? data;
 
   const NotificationModel({
@@ -14,6 +15,7 @@ class NotificationModel {
     required this.type,
     required this.isRead,
     required this.createdAt,
+    this.image,
     this.data,
   });
 
@@ -24,6 +26,7 @@ class NotificationModel {
         type: json['type'] as String? ?? 'SYSTEM',
         isRead: json['is_read'] as bool? ?? false,
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+        image: json['image'] as String?,
         data: (json['data'] as Map?)?.cast<String, String>(),
       );
 
@@ -34,16 +37,18 @@ class NotificationModel {
         'type': type,
         'is_read': isRead,
         'created_at': createdAt.toIso8601String(),
+        if (image != null) 'image': image,
         if (data != null) 'data': data,
       };
 
-  NotificationModel copyWith({bool? isRead}) => NotificationModel(
+  NotificationModel copyWith({bool? isRead, String? image}) => NotificationModel(
         id: id,
         title: title,
         body: body,
         type: type,
         isRead: isRead ?? this.isRead,
         createdAt: createdAt,
+        image: image ?? this.image,
         data: data,
       );
 }
