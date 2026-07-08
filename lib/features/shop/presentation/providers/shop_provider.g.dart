@@ -58,7 +58,7 @@ final shopReviewStatsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ShopReviewStatsRef = AutoDisposeFutureProviderRef<ShopReviewStats>;
-String _$shopNotifierHash() => r'c5554ae94a53e76ac2480fd3fb24776ec2e72710';
+String _$shopNotifierHash() => r'698fb4a0492c909eb58e750c20b22dd46b857300';
 
 /// See also [ShopNotifier].
 @ProviderFor(ShopNotifier)

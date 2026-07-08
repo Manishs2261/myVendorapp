@@ -1,6 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -157,7 +162,7 @@ class _ProductView extends StatelessWidget {
 // Image gallery
 // ---------------------------------------------------------------------------
 
-class _ImageGallery extends StatelessWidget {
+class _ImageGallery extends StatefulWidget {
   final Product product;
   final int currentImage;
   final ValueChanged<int> onImageChanged;
@@ -169,8 +174,69 @@ class _ImageGallery extends StatelessWidget {
   });
 
   @override
+  State<_ImageGallery> createState() => _ImageGalleryState();
+}
+
+class _ImageGalleryState extends State<_ImageGallery> {
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.currentImage);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageGallery oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentImage != widget.currentImage) {
+      if (_pageController.hasClients) {
+        final currentPage = _pageController.page?.round() ?? 0;
+        if (currentPage != widget.currentImage) {
+          _pageController.animateToPage(
+            widget.currentImage,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openFullScreen(BuildContext context, int initialIndex) async {
+    final images = widget.product.imageUrls;
+    final heroPrefix = 'product_image_${widget.product.id}';
+    
+    final newIndex = await Navigator.push<int>(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (context, animation, secondaryAnimation) => _FullScreenImageGallery(
+          imageUrls: images,
+          initialIndex: initialIndex,
+          heroTagPrefix: heroPrefix,
+        ),
+        transitionsBuilder: (context, animation, _, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+    
+    if (newIndex != null && mounted) {
+      widget.onImageChanged(newIndex);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final images = product.imageUrls;
+    final images = widget.product.imageUrls;
 
     if (images.isEmpty) {
       return Container(
@@ -185,19 +251,76 @@ class _ImageGallery extends StatelessWidget {
 
     return Column(
       children: [
-        SizedBox(
-          height: 260,
-          child: PageView.builder(
-            itemCount: images.length,
-            onPageChanged: onImageChanged,
-            itemBuilder: (_, i) => Image.network(
-              images[i],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              errorBuilder: (_, _, _) => Container(
-                color: AppColors.surface,
-                child: Icon(Icons.broken_image_outlined,
-                    size: 48, color: AppColors.textMuted),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            height: 260,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  PageView.builder(
+                    controller: _pageController,
+                    itemCount: images.length,
+                    onPageChanged: widget.onImageChanged,
+                    itemBuilder: (_, i) => GestureDetector(
+                      onTap: () => _openFullScreen(context, i),
+                      child: Hero(
+                        tag: 'product_image_${widget.product.id}_$i',
+                        child: CachedNetworkImage(
+                          imageUrl: images[i],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          placeholder: (context, url) => _shimmerLoading(),
+                          errorWidget: (context, url, error) => Container(
+                            color: AppColors.surface,
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              size: 48,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (images.length > 1)
+                    Positioned(
+                      bottom: 12,
+                      right: 12,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            color: Colors.black.withValues(alpha: 0.5),
+                            child: Text(
+                              '${widget.currentImage + 1}/${images.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -211,10 +334,10 @@ class _ImageGallery extends StatelessWidget {
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: currentImage == i ? 18 : 6,
+                width: widget.currentImage == i ? 18 : 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: currentImage == i
+                  color: widget.currentImage == i
                       ? AppColors.primary
                       : AppColors.textMuted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(3),
@@ -222,25 +345,37 @@ class _ImageGallery extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 56,
+            height: 60,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: images.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) => GestureDetector(
-                onTap: () => onImageChanged(i),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: Image.network(
-                      images[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(color: AppColors.surface),
+                onTap: () => widget.onImageChanged(i),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: widget.currentImage == i
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: CachedNetworkImage(
+                        imageUrl: images[i],
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => _shimmerLoading(),
+                        errorWidget: (context, url, error) => Container(color: AppColors.surface),
+                      ),
                     ),
                   ),
                 ),
@@ -250,6 +385,125 @@ class _ImageGallery extends StatelessWidget {
         ],
         const SizedBox(height: 8),
       ],
+    );
+  }
+
+  Widget _shimmerLoading() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surface2,
+      highlightColor: AppColors.surface3,
+      child: Container(
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+class _FullScreenImageGallery extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+  final String heroTagPrefix;
+
+  const _FullScreenImageGallery({
+    required this.imageUrls,
+    required this.initialIndex,
+    required this.heroTagPrefix,
+  });
+
+  @override
+  State<_FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
+  late int _currentIndex;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          PhotoViewGallery.builder(
+            scrollPhysics: const BouncingScrollPhysics(),
+            builder: (BuildContext context, int index) {
+              return PhotoViewGalleryPageOptions(
+                imageProvider: CachedNetworkImageProvider(widget.imageUrls[index]),
+                initialScale: PhotoViewComputedScale.contained,
+                minScale: PhotoViewComputedScale.contained * 0.8,
+                maxScale: PhotoViewComputedScale.covered * 3.0,
+                heroAttributes: PhotoViewHeroAttributes(
+                  tag: '${widget.heroTagPrefix}_$index',
+                ),
+              );
+            },
+            itemCount: widget.imageUrls.length,
+            loadingBuilder: (context, event) => const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+              ),
+            ),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            pageController: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16,
+            child: ClipOval(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context, _currentIndex),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: Colors.black.withValues(alpha: 0.5),
+                  child: Text(
+                    '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

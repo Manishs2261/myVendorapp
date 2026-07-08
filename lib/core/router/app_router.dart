@@ -152,9 +152,18 @@ GoRouter appRouter(Ref ref) {
           ),
           GoRoute(
             path: '/products/:id/edit',
-            builder: (_, state) => AddProductScreen(
-              initialProduct: state.extra as Product?,
-            ),
+            builder: (_, state) {
+              final extra = state.extra;
+              Product? product;
+              if (extra is Product) {
+                product = extra;
+              } else if (extra is Map) {
+                product = Product.fromJson(Map<String, dynamic>.from(extra));
+              }
+              return AddProductScreen(
+                initialProduct: product,
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.addProduct,

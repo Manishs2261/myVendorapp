@@ -45,7 +45,7 @@ final dashboardRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DashboardRepositoryRef = AutoDisposeProviderRef<IDashboardRepository>;
-String _$dashboardNotifierHash() => r'2dee6412f6855216280c36ee5cf903cb568ef98c';
+String _$dashboardNotifierHash() => r'b7ded5cfda6c7269625e3cc2722690e4207f3eaf';
 
 /// See also [DashboardNotifier].
 @ProviderFor(DashboardNotifier)

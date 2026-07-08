@@ -147,7 +147,7 @@ class _DraftsScreenState extends ConsumerState<DraftsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _drafts.isEmpty ? null : FloatingActionButton.extended(
         onPressed: () => context.push(RouteNames.addProduct),
         icon: const Icon(Icons.add),
         label: const Text('New Product'),

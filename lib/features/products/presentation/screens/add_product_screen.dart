@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:myvendorapp/core/utils/app_logger.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -14,13 +15,12 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../data/products_repository.dart';
 import '../../domain/product_models.dart';
 import '../providers/ai_image_provider.dart';
 import '../providers/products_provider.dart';
+import '../providers/add_product_form_provider.dart';
 import '../widgets/image_processing_dialog.dart';
 import '../../../../core/router/route_names.dart';
-import '../../../../core/utils/error_parser.dart';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -47,6 +47,7 @@ const _colorSwatches = [
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final Product? initialProduct;
+
   const AddProductScreen({super.key, this.initialProduct});
 
   @override
@@ -55,29 +56,31 @@ class AddProductScreen extends ConsumerStatefulWidget {
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool get _isEditing => widget.initialProduct != null;
-  bool get _isDraft => _isEditing
-      ? (widget.initialProduct?.isDraft ?? false)
-      : true;
-  int? get _effectiveDraftId =>
-      _currentDraftId ?? (_isEditing ? widget.initialProduct?.id : null);
+
+  bool get _isDraft {
+    return _isEditing ? (widget.initialProduct?.isDraft ?? false) : true;
+  }
+
+  int? get _effectiveDraftId {
+    final formState = ref.read(addProductFormProvider);
+    return formState.currentDraftId ?? (_isEditing ? widget.initialProduct?.id : null);
+  }
 
   int get _completionPct {
+    final formState = ref.read(addProductFormProvider);
     int score = 0;
     if (_nameCtrl.text.trim().isNotEmpty) score += 20;
     if (_priceCtrl.text.trim().isNotEmpty) score += 20;
-    if (_selectedCategoryId != null) score += 20;
+    if (formState.selectedCategoryId != null) score += 20;
     if (_descCtrl.text.trim().isNotEmpty) score += 15;
-    if (_selectedImages.isNotEmpty || _existingImageUrls.isNotEmpty) score += 15;
+    if (formState.selectedImages.isNotEmpty || formState.existingImageUrls.isNotEmpty)
+      score += 15;
     if (_brandCtrl.text.trim().isNotEmpty) score += 5;
-    if (_tags.isNotEmpty) score += 5;
+    if (formState.tags.isNotEmpty) score += 5;
     return score;
   }
 
   final _formKey = GlobalKey<FormState>();
-  bool _loading = false;
-  bool _draftSaving = false;
-  bool _hasUnsavedChanges = false;
-  int? _currentDraftId;
   Timer? _autoSaveTimer;
 
   // Basic Info
@@ -85,97 +88,75 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _descCtrl = TextEditingController();
   final _brandCtrl = TextEditingController();
   final _tagInputCtrl = TextEditingController();
-  final List<String> _tags = [];
 
-  // Media — existing URLs (edit mode) + newly picked files
+  // Media
   final _picker = ImagePicker();
-  final List<String> _existingImageUrls = [];
-  final List<XFile> _selectedImages = [];
-  XFile? _selectedVideo;
-  String? _existingVideoUrl;
-  bool _removeVideo = false;
 
   // Custom color variations (hex values not in the predefined palette)
-  final List<({String hex, String name})> _customColors = [];
   final _customColorNameCtrl = TextEditingController();
   Color _customPickerColor = const Color(0xFFE91E63);
 
   // Specifications: each entry = (key controller, value controller)
-  final List<({TextEditingController key, TextEditingController value})> _specs =
-      [];
-
-  // Color variations: hex → selected
-  final Map<String, bool> _colorSelections = {
-    for (final (hex, _) in _colorSwatches) hex: false,
-  };
+  final List<({TextEditingController key, TextEditingController value})>
+  _specs = [];
 
   // Pricing & Stock
   final _mrpCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _discountCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
-  String? _selectedUnit;
-  String _status = 'active';
-
-  // Category
-  int? _selectedCategoryId;
-
-
 
   void _markDirty() {
-    if (!_hasUnsavedChanges && mounted) setState(() => _hasUnsavedChanges = true);
+    ref.read(addProductFormProvider.notifier).markDirty();
   }
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialProduct != null) _prefillFromProduct(widget.initialProduct!);
+    if (widget.initialProduct != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(addProductFormProvider.notifier)
+            .prefillFromProduct(widget.initialProduct!);
+      });
+      _prefillLocalControllers(widget.initialProduct!);
+    }
     for (final ctrl in [
-      _nameCtrl, _descCtrl, _brandCtrl, _mrpCtrl,
-      _priceCtrl, _discountCtrl, _stockCtrl,
+      _nameCtrl,
+      _descCtrl,
+      _brandCtrl,
+      _mrpCtrl,
+      _priceCtrl,
+      _discountCtrl,
+      _stockCtrl,
     ]) {
       ctrl.addListener(_markDirty);
     }
     _autoSaveTimer = Timer.periodic(const Duration(seconds: 45), (_) {
-      if (_hasUnsavedChanges && _effectiveDraftId != null && _nameCtrl.text.trim().isNotEmpty) {
+      final formState = ref.read(addProductFormProvider);
+      if (formState.hasUnsavedChanges &&
+          _effectiveDraftId != null &&
+          _nameCtrl.text.trim().isNotEmpty) {
         _saveDraft(silent: true);
       }
     });
   }
 
-  void _prefillFromProduct(Product p) {
+  void _prefillLocalControllers(Product p) {
     _nameCtrl.text = p.name;
     _descCtrl.text = p.description;
     _brandCtrl.text = p.brand ?? '';
-    _tags.addAll(p.tags);
-    _existingImageUrls.addAll(p.imageUrls);
-    _existingVideoUrl = p.videoUrl;
     for (final e in p.specifications.entries) {
       final keyCtrl = TextEditingController(text: e.key);
       final valCtrl = TextEditingController(text: e.value);
       keyCtrl.addListener(_markDirty);
       valCtrl.addListener(_markDirty);
-      _specs.add((
-        key: keyCtrl,
-        value: valCtrl,
-      ));
-    }
-    final knownHexes = _colorSwatches.map((s) => s.$1).toSet();
-    for (final hex in p.colorVariations) {
-      if (knownHexes.contains(hex)) {
-        _colorSelections[hex] = true;
-      } else {
-        _customColors.add((hex: hex, name: hex));
-      }
+      _specs.add((key: keyCtrl, value: valCtrl));
     }
     _priceCtrl.text = p.price.toString();
     _mrpCtrl.text = p.originalPrice?.toString() ?? '';
     _discountCtrl.text = p.discountPercentage?.toString() ?? '';
     _stockCtrl.text = p.stock.toString();
-    _status = (p.status == ProductStatus.outOfStock) ? 'inactive' : p.status.name;
-    _selectedUnit = p.unit;
-    _selectedCategoryId = p.categoryId;
-
   }
 
   @override
@@ -198,116 +179,97 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Draft helpers
-  // ---------------------------------------------------------------------------
-
-  ProductForm _buildForm({bool isDraft = false}) => ProductForm(
-        isDraft: isDraft,
-        name: _nameCtrl.text.trim(),
-        description: _descCtrl.text.trim(),
-        price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
-        originalPrice: double.tryParse(_mrpCtrl.text.trim()),
-        discountPercentage: int.tryParse(_discountCtrl.text.trim()),
-        stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
-        status: _status,
-        categoryId: _selectedCategoryId,
-        brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
-        unit: _selectedUnit,
-        tags: List.from(_tags),
-        specifications: {
-          for (final row in _specs)
-            if (row.key.text.trim().isNotEmpty)
-              row.key.text.trim(): row.value.text.trim(),
-        },
-        colorVariations: [
-          ..._colorSelections.entries.where((e) => e.value).map((e) => e.key),
-          ..._customColors.map((c) => c.hex),
-        ],
-        latitude: null,
-        longitude: null,
-        images: List.from(_existingImageUrls),
-        removeVideo: _removeVideo,
-      );
+  Map<String, String> _buildSpecsMap() {
+    return {
+      for (final row in _specs)
+        if (row.key.text.trim().isNotEmpty)
+          row.key.text.trim(): row.value.text.trim(),
+    };
+  }
 
   Future<void> _saveDraft({bool silent = false}) async {
-    if (_nameCtrl.text.trim().isEmpty) {
-      if (!silent) _showSnack('Please enter a product name first');
-      return;
-    }
-    if (!silent) setState(() => _draftSaving = true);
-    try {
-      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
-      final form = _buildForm(isDraft: true);
-      Product result;
-      if (_effectiveDraftId != null) {
-        if (_selectedImages.isNotEmpty || _selectedVideo != null) {
-          result = await repo.updateProductMultipart(
-            id: _effectiveDraftId!,
-            form: form,
-            images: _selectedImages,
-            video: _selectedVideo,
-          );
-        } else {
-          result = await repo.updateProduct(_effectiveDraftId!, form);
-        }
-      } else {
-        result = await repo.createProductMultipart(
-          form: form,
-          images: _selectedImages,
-          video: _selectedVideo,
-        );
-        if (mounted) setState(() => _currentDraftId = result.id);
-      }
-      if (mounted) {
-        setState(() {
-          _hasUnsavedChanges = false;
-          _existingImageUrls.clear();
-          _existingImageUrls.addAll(result.imageUrls);
-          _selectedImages.clear();
-          _selectedVideo = null;
-          if (result.videoUrl != null) {
-            _existingVideoUrl = result.videoUrl;
-          }
-        });
-        if (!silent) _showSnack('Draft saved!');
-      }
-    } catch (e) {
-      if (mounted && !silent) _showSnack(extractError(e));
-    } finally {
-      if (mounted && !silent) setState(() => _draftSaving = false);
-    }
+    final notifier = ref.read(addProductFormProvider.notifier);
+    await notifier.saveDraft(
+      name: _nameCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+      originalPrice: double.tryParse(_mrpCtrl.text.trim()),
+      discountPercentage: int.tryParse(_discountCtrl.text.trim()),
+      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
+      brand: _brandCtrl.text.trim(),
+      specs: _buildSpecsMap(),
+      onFinished: (msg) {
+        if (!silent && mounted) _showSnack(msg);
+      },
+      onError: (err) {
+        if (!silent && mounted) _showSnack(err);
+      },
+    );
   }
 
   Future<void> _publishProduct() async {
-    if (_nameCtrl.text.trim().isEmpty || _selectedCategoryId == null) {
+    final notifier = ref.read(addProductFormProvider.notifier);
+    final formState = ref.read(addProductFormProvider);
+    if (_nameCtrl.text.trim().isEmpty || formState.selectedCategoryId == null) {
       _showSnack('Please fill in name and category before publishing');
       return;
     }
-    setState(() => _loading = true);
-    try {
-      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
-      if (_effectiveDraftId != null) {
-        await repo.publishDraft(_effectiveDraftId!);
-      } else {
-        final form = _buildForm();
-        await repo.createProductMultipart(
-          form: form,
-          images: _selectedImages,
-          video: _selectedVideo,
-        );
-      }
-      if (mounted) {
-        _showSnack(_isEditing ? 'Product updated!' : 'Product published!');
-        ref.invalidate(productsNotifierProvider);
-        ref.invalidate(dashboardNotifierProvider);
-        context.pop();
-      }
-    } catch (e) {
-      if (mounted) _showSnack(extractError(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    await notifier.publishProduct(
+      name: _nameCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+      originalPrice: double.tryParse(_mrpCtrl.text.trim()),
+      discountPercentage: int.tryParse(_discountCtrl.text.trim()),
+      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
+      brand: _brandCtrl.text.trim(),
+      specs: _buildSpecsMap(),
+      onFinished: (msg) {
+        if (mounted) {
+          _showSnack(msg);
+          context.pop();
+        }
+      },
+      onError: (err) {
+        if (mounted) _showSnack(err);
+      },
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final formState = ref.read(addProductFormProvider);
+    if (formState.selectedCategoryId == null) {
+      _showSnack('Please select a category');
+      return;
     }
+    if (!_isEditing && formState.selectedImages.isEmpty) {
+      _showSnack('Please add at least one product image');
+      return;
+    }
+
+    final notifier = ref.read(addProductFormProvider.notifier);
+    await notifier.submitProduct(
+      isEditing: _isEditing,
+      initialProduct: widget.initialProduct,
+      name: _nameCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+      originalPrice: double.tryParse(_mrpCtrl.text.trim()),
+      discountPercentage: int.tryParse(_discountCtrl.text.trim()),
+      stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
+      brand: _brandCtrl.text.trim(),
+      specs: _buildSpecsMap(),
+      onFinished: (msg) {
+        if (mounted) {
+          _showSnack(msg);
+          context.pop();
+        }
+      },
+      onError: (err) {
+        if (mounted) _showSnack(err);
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -335,14 +297,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.primary),
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: AppColors.primary,
+              ),
               title: const Text('Choose from Gallery'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.primary),
+              leading: const Icon(
+                Icons.camera_alt_rounded,
+                color: AppColors.primary,
+              ),
               title: const Text('Take a Photo'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
@@ -360,48 +326,86 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (source == ImageSource.camera) {
       final picked = await _picker.pickImage(source: ImageSource.camera);
       if (picked == null) return;
+
       await _processPickedImages([picked]);
     } else {
-      final picked = await _picker.pickImage(source: ImageSource.gallery);
-      if (picked == null) return;
-      await _processPickedImages([picked]);
+      final picked = await _picker.pickMultiImage(limit: 10);
+
+      if (picked.isEmpty) return;
+
+      await _processPickedImages(picked);
     }
   }
 
   Future<void> _processPickedImages(List<XFile> picked) async {
     if (picked.isEmpty || !mounted) return;
 
-    // Ask once — apply the same processing choice to every picked image.
-    final choice = await showDialog<ImageProcessingChoice>(
-      context: context,
-      builder: (_) => const ImageProcessingDialog(),
-    );
-    if (choice == null || !mounted) return;
+    ImageProcessingChoice? choice;
+
+    // Show dialog only for a single image.
+    if (picked.length == 1) {
+      choice = await showDialog<ImageProcessingChoice>(
+        context: context,
+        builder: (_) => const ImageProcessingDialog(),
+      );
+      if (choice == null || !mounted) return;
+    } else {
+      choice = ImageProcessingChoice.skip;
+    }
+
+    final notifier = ref.read(addProductFormProvider.notifier);
+    final formState = ref.read(addProductFormProvider);
+    final List<XFile> processedImages = [];
+    final Map<String, Uint8List> processedBytes = {};
+
+    final int currentCount = formState.existingImageUrls.length + formState.selectedImages.length;
+    final int allowedRemaining = 10 - currentCount;
+
+    if (picked.length > allowedRemaining) {
+      _showSnack(
+        allowedRemaining <= 0
+            ? 'Cannot add more images. Maximum of 10 allowed.'
+            : 'Only the first $allowedRemaining images will be added (Maximum of 10 allowed).',
+      );
+    }
 
     for (final raw in picked) {
-      if (_selectedImages.length >= 10) break;
+      final currentTotal = formState.existingImageUrls.length +
+          formState.selectedImages.length +
+          processedImages.length;
+      if (currentTotal >= 10) break;
       if (!mounted) break;
 
       XFile? finalImage;
       if (choice == ImageProcessingChoice.removeBackground) {
         ref.read(aiImageNotifierProvider.notifier).reset();
         if (!mounted) break;
-        finalImage = await context.push<XFile>(RouteNames.aiPreview, extra: raw);
+        finalImage = await context.push<XFile>(
+          RouteNames.aiPreview,
+          extra: raw,
+        );
       } else if (choice == ImageProcessingChoice.crop) {
-        finalImage = await context.push<XFile>(RouteNames.cropEditor, extra: raw);
+        finalImage = await context.push<XFile>(
+          RouteNames.cropEditor,
+          extra: raw,
+        );
       } else {
-        finalImage =
-            await ref.read(aiImageServiceProvider).compressFinalImage(raw);
+        finalImage = await ref
+            .read(aiImageServiceProvider)
+            .compressFinalImage(raw);
       }
 
       if (finalImage != null && mounted) {
-        setState(() { _selectedImages.add(finalImage!); _hasUnsavedChanges = true; });
+        final bytes = await finalImage.readAsBytes();
+        processedImages.add(finalImage);
+        processedBytes[finalImage.path] = bytes;
       }
     }
-  }
 
-  void _removeImage(int index) =>
-      setState(() { _selectedImages.removeAt(index); _hasUnsavedChanges = true; });
+    if (processedImages.isNotEmpty) {
+      notifier.addSelectedImages(processedImages, processedBytes);
+    }
+  }
 
   Future<void> _pickVideo() async {
     final picked = await _picker.pickVideo(source: ImageSource.gallery);
@@ -414,10 +418,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       return;
     }
 
-    setState(() {
-      _selectedVideo = picked;
-      _hasUnsavedChanges = true;
-    });
+    ref.read(addProductFormProvider.notifier).setVideo(picked);
   }
 
   // ---------------------------------------------------------------------------
@@ -434,12 +435,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     keyCtrl.addListener(_markDirty);
     valCtrl.addListener(_markDirty);
     setState(() {
-      _specs.add((
-        key: keyCtrl,
-        value: valCtrl,
-      ));
-      _hasUnsavedChanges = true;
+      _specs.add((key: keyCtrl, value: valCtrl));
     });
+    ref.read(addProductFormProvider.notifier).markDirty();
   }
 
   void _removeSpec(int index) {
@@ -535,24 +533,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       valCtrl.addListener(_markDirty);
 
       setState(() {
-        _specs.add((
-          key: keyCtrl,
-          value: valCtrl,
-        ));
+        _specs.add((key: keyCtrl, value: valCtrl));
       });
       addedCount++;
     }
 
     if (addedCount > 0) {
-      setState(() => _hasUnsavedChanges = true);
+      ref.read(addProductFormProvider.notifier).markDirty();
       _showSnack('Imported $addedCount specifications');
     }
     if (reachedLimit) {
       _showSnack('Maximum of 30 specifications allowed');
     }
   }
-
-
 
   // ---------------------------------------------------------------------------
   // Tag helpers
@@ -570,22 +563,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     if (parsedTags.isEmpty) return;
 
-    setState(() {
-      for (var tag in parsedTags) {
-        if (tag.length > 20) {
-          tag = tag.substring(0, 20);
-        }
-        if (!_tags.contains(tag)) {
-          if (_tags.length >= 50) {
-            _showSnack('Maximum of 50 tags allowed');
-            break;
-          }
-          _tags.add(tag);
-        }
+    final notifier = ref.read(addProductFormProvider.notifier);
+    final formState = ref.read(addProductFormProvider);
+
+    for (var tag in parsedTags) {
+      if (tag.length > 20) {
+        tag = tag.substring(0, 20);
       }
-      _tagInputCtrl.clear();
-      _hasUnsavedChanges = true;
-    });
+      if (!formState.tags.contains(tag)) {
+        if (formState.tags.length >= 50) {
+          _showSnack('Maximum of 50 tags allowed');
+          break;
+        }
+        notifier.addTag(tag);
+      }
+    }
+    _tagInputCtrl.clear();
   }
 
   void _onTagInputChanged(String val) {
@@ -598,68 +591,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           selection: const TextSelection.collapsed(offset: 20),
         );
       }
-      setState(() {});
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------------
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedCategoryId == null) {
-      _showSnack('Please select a category');
-      return;
-    }
-    if (!_isEditing && _selectedImages.isEmpty) {
-      _showSnack('Please add at least one product image');
-      return;
-    }
-
-    setState(() => _loading = true);
-    try {
-      final form = _buildForm();
-
-      final repo = ref.read(productsRepositoryProvider) as ProductsRepository;
-
-      if (_isEditing) {
-        if (_selectedImages.isNotEmpty || _selectedVideo != null) {
-          await repo.updateProductMultipart(
-            id: widget.initialProduct!.id,
-            form: form,
-            images: _selectedImages,
-            video: _selectedVideo,
-          );
-        } else {
-          await repo.updateProduct(widget.initialProduct!.id, form);
-        }
-        ref.invalidate(productDetailProvider(widget.initialProduct!.id));
-      } else {
-        await repo.createProductMultipart(
-          form: form,
-          images: _selectedImages,
-          video: _selectedVideo,
-        );
-      }
-
-      if (mounted) {
-        setState(() => _hasUnsavedChanges = false);
-        _showSnack(_isEditing ? 'Product updated!' : 'Product added successfully');
-        ref.invalidate(productsNotifierProvider);
-        ref.invalidate(dashboardNotifierProvider);
-        context.pop();
-      }
-    } catch (e) {
-      if (mounted) _showSnack(extractError(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _showSnack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
+  void _showSnack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   // ---------------------------------------------------------------------------
   // Build
@@ -667,16 +603,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppLogger.debug('Build screen add product');
     ref.watch(isDarkModeProvider);
+    final formState = ref.watch(addProductFormProvider);
     final pct = _completionPct;
     final progressColor = pct >= 80
         ? Colors.green
         : pct >= 40
-            ? Colors.orange
-            : AppColors.secondary;
+        ? Colors.orange
+        : AppColors.secondary;
 
     return PopScope(
-      canPop: !_hasUnsavedChanges,
+      canPop: !formState.hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
           final leave = await showDialog<bool>(
@@ -700,12 +638,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }
       },
       child: LoadingOverlay(
-        isLoading: _loading,
+        isLoading: formState.loading,
         child: Scaffold(
           appBar: AppBar(
-            title: Text(_isEditing
-                ? (_isDraft ? 'Edit Draft' : 'Edit Product')
-                : 'Add Product'),
+            title: Text(
+              _isEditing
+                  ? (_isDraft ? 'Edit Draft' : 'Edit Product')
+                  : 'Add Product',
+            ),
           ),
           body: Form(
             key: _formKey,
@@ -732,22 +672,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       Text(
                         '$pct%',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.textMuted,
-                            ),
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
                   if (_effectiveDraftId != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      _draftSaving
+                      formState.draftSaving
                           ? 'Saving draft...'
-                          : _hasUnsavedChanges
-                              ? 'Unsaved changes'
-                              : 'Draft saved',
+                          : formState.hasUnsavedChanges
+                          ? 'Unsaved changes'
+                          : 'Draft saved',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.textMuted,
-                          ),
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 16),
@@ -766,8 +706,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   const SizedBox(height: 24),
                   // Save as Draft button
                   OutlinedButton(
-                    onPressed: _draftSaving ? null : () => _saveDraft(),
-                    child: _draftSaving
+                    onPressed: formState.draftSaving ? null : () => _saveDraft(),
+                    child: formState.draftSaving
                         ? const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
@@ -775,7 +715,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                               SizedBox(width: 8),
                               Text('Saving...'),
@@ -789,7 +731,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     label: _isDraft
                         ? 'Publish Product'
                         : (_isEditing ? 'Save Changes' : 'Add Product'),
-                    loading: _loading,
+                    loading: formState.loading,
                     onTap: _isDraft ? _publishProduct : _submit,
                   ),
                   const SizedBox(height: 32),
@@ -819,7 +761,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             maxLength: 100,
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Required';
-              if (v.trim().length > 100) return 'Name cannot exceed 100 characters';
+              if (v.trim().length > 100)
+                return 'Name cannot exceed 100 characters';
               return null;
             },
           ),
@@ -858,6 +801,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildTagInput() {
+    final formState = ref.watch(addProductFormProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -880,21 +824,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ),
           ],
         ),
-        if (_tags.isNotEmpty) ...[
+        if (formState.tags.isNotEmpty) ...[
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 4,
-            children: _tags
-                .map((tag) => Chip(
-                      label: Text(tag,
-                          style:
-                              TextStyle(color: AppColors.textPrimary)),
-                      backgroundColor: AppColors.surface3,
-                      deleteIconColor: AppColors.textMuted,
-                      onDeleted: () =>
-                          setState(() => _tags.remove(tag)),
-                    ))
+            children: formState.tags
+                .map(
+                  (tag) => Chip(
+                    label: Text(
+                      tag,
+                      style: TextStyle(color: AppColors.textPrimary),
+                    ),
+                    backgroundColor: AppColors.surface3,
+                    deleteIconColor: AppColors.textMuted,
+                    onDeleted: () => ref
+                        .read(addProductFormProvider.notifier)
+                        .removeTag(tag),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -907,6 +855,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildMediaSection() {
+    final formState = ref.watch(addProductFormProvider);
     return _SectionCard(
       title: 'Media',
       child: Column(
@@ -917,17 +866,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             children: [
               Text(
                 'Product Images',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.textMuted),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
               ),
               Text(
-                '${_existingImageUrls.length + _selectedImages.length}/10',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.textMuted),
+                '${formState.existingImageUrls.length + formState.selectedImages.length}/10',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
               ),
             ],
           ),
@@ -936,10 +883,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           const SizedBox(height: 4),
           Text(
             'PNG, JPG, WebP · Max 10 images · 5 MB each',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.textMuted),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
           _buildVideoPicker(),
@@ -949,8 +895,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildImageGrid() {
+    final formState = ref.watch(addProductFormProvider);
     const tileSize = 90.0;
-    final totalCount = _existingImageUrls.length + _selectedImages.length;
+    final totalCount = formState.existingImageUrls.length + formState.selectedImages.length;
     final canAdd = totalCount < 10;
 
     return Wrap(
@@ -958,7 +905,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       runSpacing: 8,
       children: [
         // Existing URL thumbnails (edit mode)
-        ..._existingImageUrls.asMap().entries.map((entry) {
+        ...formState.existingImageUrls.asMap().entries.map((entry) {
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -973,8 +920,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     width: tileSize,
                     height: tileSize,
                     color: AppColors.surface3,
-                    child: Icon(Icons.broken_image_outlined,
-                        color: AppColors.textMuted),
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ),
@@ -982,8 +931,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 top: -6,
                 right: -6,
                 child: GestureDetector(
-                  onTap: () => setState(
-                      () => _existingImageUrls.removeAt(entry.key)),
+                  onTap: () => ref
+                      .read(addProductFormProvider.notifier)
+                      .removeExistingImage(entry.key),
                   child: Container(
                     width: 20,
                     height: 20,
@@ -991,8 +941,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       color: AppColors.error,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close,
-                        size: 12, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -1001,38 +954,36 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         }),
 
         // Newly picked local image tiles (create mode only)
-        ..._selectedImages.asMap().entries.map((entry) {
+        ...formState.selectedImages.asMap().entries.map((entry) {
+          final bytes = formState.selectedImageBytes[entry.value.path];
           return Stack(
             clipBehavior: Clip.none,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: FutureBuilder<Uint8List>(
-                  future: entry.value.readAsBytes(),
-                  builder: (context, snap) {
-                    if (!snap.hasData) {
-                      return Container(
+                child: bytes == null
+                    ? Container(
                         width: tileSize,
                         height: tileSize,
                         color: AppColors.surface3,
                         child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2)),
-                      );
-                    }
-                    return Image.memory(
-                      snap.data!,
-                      width: tileSize,
-                      height: tileSize,
-                      fit: BoxFit.cover,
-                    );
-                  },
-                ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : Image.memory(
+                        bytes,
+                        width: tileSize,
+                        height: tileSize,
+                        fit: BoxFit.cover,
+                      ),
               ),
               Positioned(
                 top: -6,
                 right: -6,
                 child: GestureDetector(
-                  onTap: () => _removeImage(entry.key),
+                  onTap: () => ref
+                      .read(addProductFormProvider.notifier)
+                      .removeSelectedImage(entry.key),
                   child: Container(
                     width: 20,
                     height: 20,
@@ -1040,8 +991,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       color: AppColors.error,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close,
-                        size: 12, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -1059,17 +1013,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 color: AppColors.surface3,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: AppColors.border, style: BorderStyle.solid),
+                  color: AppColors.border,
+                  style: BorderStyle.solid,
+                ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_photo_alternate_outlined,
-                      color: AppColors.textMuted),
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    color: AppColors.textMuted,
+                  ),
                   const SizedBox(height: 4),
-                  Text('Upload',
-                      style: TextStyle(
-                          color: AppColors.textMuted, fontSize: 11)),
+                  Text(
+                    'Upload',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
                 ],
               ),
             ),
@@ -1079,19 +1038,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildVideoPicker() {
+    final formState = ref.watch(addProductFormProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Product Video (optional)',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: AppColors.textMuted),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
         ),
         const SizedBox(height: 8),
         // Show existing uploaded video (edit mode, before user picks a new one)
-        if (_existingVideoUrl != null && _selectedVideo == null)
+        if (formState.existingVideoUrl != null && formState.selectedVideo == null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1112,25 +1071,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => setState(() {
-                    _existingVideoUrl = null;
-                    _removeVideo = true;
-                    _markDirty();
-                  }),
+                  onPressed: () => ref
+                      .read(addProductFormProvider.notifier)
+                      .removeExistingVideo(),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFE05A5A),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Remove video', style: TextStyle(fontSize: 13)),
+                  child: const Text(
+                    'Remove video',
+                    style: TextStyle(fontSize: 13),
+                  ),
                 ),
               ],
             ),
           )
         else
           GestureDetector(
-            onTap: _selectedVideo == null ? _pickVideo : null,
+            onTap: formState.selectedVideo == null ? _pickVideo : null,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -1139,38 +1099,44 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border),
               ),
-              child: _selectedVideo == null
+              child: formState.selectedVideo == null
                   ? Column(
                       children: [
-                        Icon(Icons.videocam_outlined,
-                            color: AppColors.textMuted),
+                        Icon(
+                          Icons.videocam_outlined,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 4),
-                        Text('Upload product video',
-                            style: TextStyle(color: AppColors.primary)),
+                        Text(
+                          'Upload product video',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
                         const SizedBox(height: 2),
-                        Text('MP4, MOV · Max 30 MB',
-                            style: TextStyle(
-                                color: AppColors.textMuted, fontSize: 12)),
+                        Text(
+                          'MP4, MOV · Max 30 MB',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     )
                   : Row(
                       children: [
-                        const Icon(Icons.videocam,
-                            color: AppColors.primary),
+                        const Icon(Icons.videocam, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _selectedVideo!.name,
-                            style: TextStyle(
-                                color: AppColors.textPrimary),
+                            formState.selectedVideo!.name,
+                            style: TextStyle(color: AppColors.textPrimary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.close,
-                              color: AppColors.textMuted),
-                          onPressed: () =>
-                              setState(() => _selectedVideo = null),
+                          icon: Icon(Icons.close, color: AppColors.textMuted),
+                          onPressed: () => ref
+                              .read(addProductFormProvider.notifier)
+                              .removeSelectedVideo(),
                         ),
                       ],
                     ),
@@ -1259,8 +1225,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline,
-                            color: AppColors.textMuted),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: AppColors.textMuted,
+                        ),
                         onPressed: () => _removeSpec(i),
                       ),
                     ],
@@ -1279,27 +1247,30 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final hex = _colorToHex(_customPickerColor);
     String name = _customColorNameCtrl.text.trim();
     if (name.isEmpty) name = hex;
-    final currentTotal = _colorSelections.entries.where((e) => e.value).length + _customColors.length;
+    final formState = ref.read(addProductFormProvider);
+    final currentTotal =
+        formState.colorSelections.entries.where((e) => e.value).length +
+        formState.customColors.length;
     if (currentTotal >= 5) {
       _showSnack('Maximum of 5 colors allowed');
       return;
     }
-    final duplicate = _customColors.any(
+    final duplicate = formState.customColors.any(
       (c) => c.name.toLowerCase() == name.toLowerCase() || c.hex == hex,
     );
     if (duplicate) {
       _showSnack('This color or name is already added');
       return;
     }
+    ref.read(addProductFormProvider.notifier).addCustomColor(hex, name);
+    _customColorNameCtrl.clear();
     setState(() {
-      _customColors.add((hex: hex, name: name));
-      _customColorNameCtrl.clear();
       _customPickerColor = const Color(0xFFE91E63);
     });
-    _markDirty();
   }
 
   Widget _buildColorVariationsSection() {
+    final formState = ref.watch(addProductFormProvider);
     return _SectionCard(
       title: 'Color Variations',
       subtitle: 'For clothing/accessories',
@@ -1313,16 +1284,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             children: _colorSwatches.map(((String, String) swatch) {
               final hex = swatch.$1;
               final label = swatch.$2;
-              final selected = _colorSelections[hex] ?? false;
+              final selected = formState.colorSelections[hex] ?? false;
               final color = _hexToColor(hex);
               return GestureDetector(
                 onTap: () {
-                  final currentTotal = _colorSelections.entries.where((e) => e.value).length + _customColors.length;
+                  final currentTotal =
+                      formState.colorSelections.entries.where((e) => e.value).length +
+                      formState.customColors.length;
                   if (!selected && currentTotal >= 5) {
                     _showSnack('Maximum of 5 colors allowed');
                     return;
                   }
-                  setState(() => _colorSelections[hex] = !selected);
+                  ref.read(addProductFormProvider.notifier).toggleColorSelection(hex);
                 },
                 child: Tooltip(
                   message: label,
@@ -1334,9 +1307,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       color: color,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border,
+                        color: selected ? AppColors.primary : AppColors.border,
                         width: selected ? 2.5 : 1,
                       ),
                     ),
@@ -1356,12 +1327,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
 
           // Custom colors added by vendor
-          if (_customColors.isNotEmpty) ...[
+          if (formState.customColors.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _customColors.map((c) {
+              children: formState.customColors.map((c) {
                 final color = _hexToColor(c.hex);
                 return Stack(
                   clipBehavior: Clip.none,
@@ -1375,14 +1346,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           color: color,
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppColors.primary, width: 2),
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
                         ),
                         child: Icon(
                           Icons.check,
                           size: 18,
-                          color: _isLight(color)
-                              ? Colors.black
-                              : Colors.white,
+                          color: _isLight(color) ? Colors.black : Colors.white,
                         ),
                       ),
                     ),
@@ -1390,7 +1361,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       top: -4,
                       right: -4,
                       child: GestureDetector(
-                        onTap: () => setState(() => _customColors.remove(c)),
+                        onTap: () => ref.read(addProductFormProvider.notifier).removeCustomColor(c),
                         child: Container(
                           width: 16,
                           height: 16,
@@ -1398,8 +1369,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             color: Color(0xFFE05A5A),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.close,
-                              size: 11, color: Colors.white),
+                          child: const Icon(
+                            Icons.close,
+                            size: 11,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -1464,8 +1438,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.border, width: 1.5),
                   ),
-                  child: const Icon(Icons.colorize,
-                      size: 16, color: Colors.white70),
+                  child: const Icon(
+                    Icons.colorize,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1476,22 +1453,24 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   controller: _customColorNameCtrl,
                   decoration: InputDecoration(
                     hintText: 'Color name (e.g. Navy Blue)',
-                    hintStyle:
-                        TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    hintStyle: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
                     filled: true,
                     fillColor: AppColors.surface3,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: AppColors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: AppColors.border),
                     ),
                   ),
                   style: const TextStyle(fontSize: 13),
@@ -1510,8 +1489,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('+ Add',
-                      style: TextStyle(fontSize: 13)),
+                  child: const Text('+ Add', style: TextStyle(fontSize: 13)),
                 ),
               ),
             ],
@@ -1529,14 +1507,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   String _colorToHex(Color c) =>
       '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
-  bool _isLight(Color c) =>
-      c.computeLuminance() > 0.5;
+  bool _isLight(Color c) => c.computeLuminance() > 0.5;
 
   // ---------------------------------------------------------------------------
   // Section: Pricing & Stock
   // ---------------------------------------------------------------------------
 
   Widget _buildPricingSection() {
+    final formState = ref.watch(addProductFormProvider);
     return _SectionCard(
       title: 'Pricing & Stock',
       child: Column(
@@ -1549,8 +1527,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   label: 'MRP / Original Price (INR)',
                   hint: 'e.g. 999',
                   maxLength: 10,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return null;
                     if (double.tryParse(v.trim()) == null) {
@@ -1570,8 +1549,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   label: 'Selling Price (INR) *',
                   hint: '0.00',
                   maxLength: 10,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     if (double.tryParse(v.trim()) == null) {
@@ -1609,17 +1589,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _selectedUnit,
-                  decoration:
-                      const InputDecoration(labelText: 'Unit'),
+                  value: formState.selectedUnit,
+                  decoration: const InputDecoration(labelText: 'Unit'),
                   hint: const Text('Select unit'),
                   items: _units
-                      .map((u) => DropdownMenuItem(
-                            value: u,
-                            child: Text(u),
-                          ))
+                      .map((u) => DropdownMenuItem(value: u, child: Text(u)))
                       .toList(),
-                  onChanged: (v) => setState(() => _selectedUnit = v),
+                  onChanged: (v) => ref.read(addProductFormProvider.notifier).updateUnit(v),
                 ),
               ),
             ],
@@ -1649,19 +1625,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  decoration:
-                      const InputDecoration(labelText: 'Status'),
+                  value: formState.status,
+                  decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
+                    DropdownMenuItem(value: 'active', child: Text('Active')),
                     DropdownMenuItem(
-                        value: 'active',
-                        child: Text('Active')),
-                    DropdownMenuItem(
-                        value: 'inactive', child: Text('Inactive')),
-                    DropdownMenuItem(
-                        value: 'draft', child: Text('Draft')),
+                      value: 'inactive',
+                      child: Text('Inactive'),
+                    ),
+                    DropdownMenuItem(value: 'draft', child: Text('Draft')),
                   ],
-                  onChanged: (v) => setState(() => _status = v!),
+                  onChanged: (v) => ref.read(addProductFormProvider.notifier).updateStatus(v!),
                 ),
               ),
             ],
@@ -1676,29 +1650,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildCategorySection() {
+    final formState = ref.watch(addProductFormProvider);
     return _SectionCard(
       title: 'Category',
-      child: ref.watch(categoriesProvider).when(
+      child: ref
+          .watch(categoriesProvider)
+          .when(
             data: (cats) => DropdownButtonFormField<int>(
-              initialValue: _selectedCategoryId,
-              decoration:
-                  const InputDecoration(labelText: 'Category *'),
+              value: formState.selectedCategoryId,
+              decoration: const InputDecoration(labelText: 'Category *'),
               hint: const Text('Select category'),
               isExpanded: true,
               items: cats
-                  .map((c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.name),
-                      ))
+                  .map(
+                    (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                  )
                   .toList(),
-              onChanged: (v) =>
-                  setState(() => _selectedCategoryId = v),
+              onChanged: (v) => ref.read(addProductFormProvider.notifier).updateCategory(v),
             ),
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Row(
               children: [
-                const Text('Failed to load categories',
-                    style: TextStyle(color: AppColors.error)),
+                const Text(
+                  'Failed to load categories',
+                  style: TextStyle(color: AppColors.error),
+                ),
                 TextButton(
                   onPressed: () => ref.invalidate(categoriesProvider),
                   child: const Text('Retry'),
@@ -1708,8 +1684,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ),
     );
   }
-
-
 }
 
 // ---------------------------------------------------------------------------
@@ -1760,7 +1734,9 @@ class _SectionCard extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: TextStyle(
-                            color: AppColors.textMuted, fontSize: 12),
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ],
